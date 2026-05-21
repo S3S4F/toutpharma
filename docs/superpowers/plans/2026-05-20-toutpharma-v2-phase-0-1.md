@@ -17,6 +17,7 @@
 
 ```
 toutpharma-v2/
+├── docker-compose.yml              # PostgreSQL local (dev)
 ├── .env.local                      # Secrets (non commit)
 ├── .env.example                    # Modèle des variables
 ├── drizzle.config.ts               # Config Drizzle Kit
@@ -217,29 +218,59 @@ git commit -m "chore: configure Vitest with smoke test"
 
 ---
 
-### Task 0.5 : Variables d'environnement et connexion Neon
+### Task 0.5 : PostgreSQL local (Docker), variables d'environnement, client DB
 
 **Files:**
-- Create: `toutpharma-v2/.env.example`, `toutpharma-v2/.env.local`, `toutpharma-v2/src/lib/db/index.ts`
+- Create: `toutpharma-v2/docker-compose.yml`, `toutpharma-v2/.env.example`, `toutpharma-v2/.env.local`, `toutpharma-v2/src/lib/db/index.ts`
 
-> **Prérequis manuel :** créer un projet sur https://neon.tech (gratuit), copier la chaîne de connexion `postgres://...`. Générer un secret : `openssl rand -base64 32`.
+> **Prérequis manuel :** installer **Docker Desktop** (https://docker.com, gratuit) et le lancer. Générer un secret : `openssl rand -base64 32`.
+> **Stratégie base :** en développement, la base PostgreSQL tourne en local dans Docker (hors-ligne). Neon (cloud) n'est utilisé qu'au déploiement (Task 0.10), via les variables d'environnement Vercel — aucune ligne de code ne change entre local et prod, seule `DATABASE_URL` diffère.
 
-- [ ] **Step 1: Écrire le modèle d'env**
+- [ ] **Step 1: Écrire le docker-compose pour PostgreSQL**
+
+Create `toutpharma-v2/docker-compose.yml` :
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: toutpharma-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: toutpharma
+      POSTGRES_PASSWORD: toutpharma_dev
+      POSTGRES_DB: toutpharma
+    ports:
+      - "5432:5432"
+    volumes:
+      - toutpharma_pgdata:/var/lib/postgresql/data
+
+volumes:
+  toutpharma_pgdata:
+```
+
+- [ ] **Step 2: Démarrer la base locale**
+
+Run (depuis `toutpharma-v2/`) : `docker compose up -d`
+Attendu : conteneur `toutpharma-db` démarré. Vérifier : `docker compose ps` montre l'état `running`/`healthy`.
+
+- [ ] **Step 3: Écrire le modèle d'env**
 
 Create `toutpharma-v2/.env.example` :
 ```
-DATABASE_URL=postgres://user:password@host/dbname?sslmode=require
+# Dev local : PostgreSQL Docker. Prod : remplacé par l'URL Neon dans Vercel.
+DATABASE_URL=postgres://toutpharma:toutpharma_dev@localhost:5432/toutpharma
 BETTER_AUTH_SECRET=changeme-32-chars-min
 BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-- [ ] **Step 2: Créer le .env.local réel**
+- [ ] **Step 4: Créer le .env.local réel**
 
-Create `toutpharma-v2/.env.local` (valeurs réelles Neon + secret généré). Vérifier qu'il est ignoré :
+Create `toutpharma-v2/.env.local` (copie de `.env.example`, en remplaçant `BETTER_AUTH_SECRET` par le secret généré ; `DATABASE_URL` reste l'URL Docker locale ci-dessus). Vérifier qu'il est ignoré :
 Run : `git check-ignore toutpharma-v2/.env.local`
 Attendu : la ligne `.env.local` est retournée (donc ignoré).
 
-- [ ] **Step 3: Écrire le client DB**
+- [ ] **Step 5: Écrire le client DB**
 
 Create `toutpharma-v2/src/lib/db/index.ts` :
 ```ts
@@ -256,11 +287,11 @@ const client = postgres(connectionString, { prepare: false });
 export const db = drizzle(client, { schema });
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add toutpharma-v2/.env.example toutpharma-v2/src/lib/db/index.ts
-git commit -m "chore: add env template and Drizzle db client"
+git add toutpharma-v2/docker-compose.yml toutpharma-v2/.env.example toutpharma-v2/src/lib/db/index.ts
+git commit -m "chore: local Postgres via Docker, env template and Drizzle db client"
 ```
 
 ---
@@ -345,10 +376,10 @@ Modify `toutpharma-v2/package.json`, dans `"scripts"` :
 "db:push": "dotenv -e .env.local -- drizzle-kit push"
 ```
 
-- [ ] **Step 4: Pousser le schéma vers Neon**
+- [ ] **Step 4: Pousser le schéma vers la base locale**
 
 Run : `npm run db:push`
-Attendu : tables `user`, `session`, `account`, `verification` créées sur Neon (message de succès).
+Attendu : tables `user`, `session`, `account`, `verification` créées dans le PostgreSQL Docker local (message de succès). Vérifier : `docker exec toutpharma-db psql -U toutpharma -d toutpharma -c "\dt"` liste les 4 tables.
 
 - [ ] **Step 5: Commit**
 
@@ -407,12 +438,11 @@ import { toNextJsHandler } from "better-auth/next-js";
 export const { GET, POST } = toNextJsHandler(auth);
 ```
 
-- [ ] **Step 4: Ajouter la variable publique**
+- [ ] **Step 4: Vérifier la variable publique**
 
-Modify `toutpharma-v2/.env.local` et `.env.example`, ajouter :
-```
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+`NEXT_PUBLIC_APP_URL=http://localhost:3000` a déjà été ajouté à `.env.example` et `.env.local` en Task 0.5. Vérifier sa présence :
+Run : `grep NEXT_PUBLIC_APP_URL toutpharma-v2/.env.local`
+Attendu : la ligne est affichée. Sinon, l'ajouter.
 
 - [ ] **Step 5: Vérifier que le handler répond**
 
@@ -595,36 +625,59 @@ git commit -m "feat: admin login page with session-guarded dashboard"
 
 ---
 
-### Task 0.10 : Déploiement Vercel
+### Task 0.10 : Base Neon (prod) et déploiement Vercel
 
-**Files:**
-- Create: `toutpharma-v2/.env.example` (déjà fait), aucune modif code
+**Files:** aucune modif code (configuration cloud uniquement)
 
-> **Prérequis manuel :** compte Vercel (gratuit), Vercel CLI : `npm i -g vercel`.
+> **Prérequis manuels :**
+> 1. Compte **Neon** (https://neon.tech, gratuit) → créer un projet → copier la chaîne de connexion `postgres://...?sslmode=require` (c'est la base de PRODUCTION, distincte du Docker local).
+> 2. Compte **Vercel** (gratuit) + CLI : `npm i -g vercel`.
+> 3. Générer un secret de prod : `openssl rand -base64 32` (différent du secret local).
 
-- [ ] **Step 1: Lier le projet à Vercel**
+- [ ] **Step 1: Pousser le schéma vers Neon (prod)**
+
+Run (depuis `toutpharma-v2/`, en injectant ponctuellement l'URL Neon) :
+```bash
+DATABASE_URL="<url-neon>" npx drizzle-kit push
+```
+Attendu : tables `user`, `session`, `account`, `verification`, `categories`, `products` créées sur Neon.
+> Note : à exécuter aussi après Phase 1 si les tables catalogue n'existent pas encore sur Neon. Le `<url-neon>` est la chaîne copiée au prérequis 1.
+
+- [ ] **Step 2: Lier le projet à Vercel**
 
 Run (depuis `toutpharma-v2/`) : `vercel link`
 Suivre les prompts (créer un nouveau projet `toutpharma-v2`).
 
-- [ ] **Step 2: Configurer les variables d'environnement sur Vercel**
+- [ ] **Step 3: Configurer les variables d'environnement sur Vercel**
 
-Run, pour chaque variable (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`) :
+Run pour chaque variable (valeurs de PROD, pas les valeurs locales) :
 ```bash
-vercel env add DATABASE_URL production
+vercel env add DATABASE_URL production        # → l'URL Neon
+vercel env add BETTER_AUTH_SECRET production   # → le secret de prod généré
+vercel env add BETTER_AUTH_URL production      # → l'URL Vercel de prod
+vercel env add NEXT_PUBLIC_APP_URL production  # → l'URL Vercel de prod
 ```
-> Mettre `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` = l'URL Vercel de prod (connue après le 1er déploiement ; redéployer après mise à jour).
+> `DATABASE_URL` en prod pointe vers **Neon**, jamais vers le Docker local.
+> `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` = l'URL Vercel de prod (connue après le 1er déploiement ; redéployer après mise à jour).
 
-- [ ] **Step 3: Déployer**
+- [ ] **Step 4: Déployer**
 
 Run : `vercel --prod`
-Attendu : URL de prod retournée, page admin accessible (login fonctionne avec la même base Neon).
+Attendu : URL de prod retournée.
 
-- [ ] **Step 4: Vérifier en prod**
+- [ ] **Step 5: Créer l'admin de prod**
 
-Ouvrir `<url-vercel>/admin/login`, se connecter. Attendu : tableau de bord affiché.
+L'admin créé en Task 0.8 existe seulement dans la base Docker locale. Créer l'admin dans Neon :
+```bash
+DATABASE_URL="<url-neon>" npm run create-admin -- admin@toutpharma.sn "MotDePasseFortProd123!" "Propriétaire"
+```
+Attendu : `Admin créé : admin@toutpharma.sn`.
 
-- [ ] **Step 5: Commit (config locale Vercel)**
+- [ ] **Step 6: Vérifier en prod**
+
+Ouvrir `<url-vercel>/admin/login`, se connecter avec l'admin de prod. Attendu : tableau de bord affiché.
+
+- [ ] **Step 7: Commit (config locale Vercel)**
 
 ```bash
 cd "/Users/mac/Documents/site web"
@@ -1385,12 +1438,21 @@ Attendu : build réussit, pages `(public)` listées en statique/dynamique.
 Run : `npm test`
 Attendu : tous les tests PASS (smoke + slug).
 
-- [ ] **Step 3: Déployer**
+- [ ] **Step 3: Synchroniser schéma + données vers Neon (prod)**
+
+La prod utilise Neon (pas le Docker local). Pousser les tables catalogue et injecter les données seed dans Neon :
+```bash
+DATABASE_URL="<url-neon>" npx drizzle-kit push
+DATABASE_URL="<url-neon>" npx tsx src/scripts/seed.ts
+```
+Attendu : tables `categories`/`products` présentes sur Neon + `Seed terminé : 5 catégories, 10 produits.`
+
+- [ ] **Step 4: Déployer**
 
 Run : `vercel --prod`
-Attendu : URL prod. Ouvrir → accueil, catalogue, fiche produit fonctionnels avec les données seed.
+Attendu : URL prod. Ouvrir → accueil, catalogue, fiche produit fonctionnels avec les données seed (servies depuis Neon).
 
-- [ ] **Step 4: Vérifier le SEO de base**
+- [ ] **Step 5: Vérifier le SEO de base**
 
 Ouvrir le code source de la page d'accueil en prod (clic droit → afficher source). Attendu : `<title>` et `<meta name="description">` présents dans le HTML serveur (pas vides).
 
