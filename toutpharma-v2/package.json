@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "dotenvx run -f .env.local -- drizzle-kit migrate",
+    "db:push": "dotenvx run -f .env.local -- drizzle-kit push"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
