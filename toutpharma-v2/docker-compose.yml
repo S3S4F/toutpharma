@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: toutpharma-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: toutpharma
+      POSTGRES_PASSWORD: toutpharma_dev
+      POSTGRES_DB: toutpharma
+    ports:
+      - "5432:5432"
+    volumes:
+      - toutpharma_pgdata:/var/lib/postgresql/data
+
+volumes:
+  toutpharma_pgdata:
