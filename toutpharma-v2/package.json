@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "dotenvx run -f .env.local -- drizzle-kit migrate",
-    "db:push": "dotenvx run -f .env.local -- drizzle-kit push"
+    "db:push": "dotenvx run -f .env.local -- drizzle-kit push",
+    "create-admin": "dotenvx run -f .env.local -- tsx src/scripts/create-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
