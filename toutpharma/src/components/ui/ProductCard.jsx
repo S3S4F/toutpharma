@@ -25,6 +25,8 @@ export default function ProductCard({ product }) {
                 <h3 className="font-bold text-slate-900 mb-1">{product.name}</h3>
                 <p className="text-xs text-slate-500 mb-3">{product.category}</p>
 
+                {/* Modèle B2B : les prix ne sont jamais affichés au client,
+                    tout passe par une demande de devis. */}
                 <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Sur devis</span>
                 </div>

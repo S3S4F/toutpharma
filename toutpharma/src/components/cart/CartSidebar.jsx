@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, Send, Loader, CheckCircle2, FileDown, MessageCircle } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatWhatsAppMessage } from '../../utils/whatsapp';
-import { calculateTotal, calculateQuantity } from '../../utils/cart';
+import { calculateQuantity } from '../../utils/cart';
 import { generateOrderPDF } from '../../utils/generatePDF';
 import { api } from '../../lib/api';
 
@@ -14,7 +14,6 @@ export default function CartSidebar() {
     // Après envoi : { orderNumber, pdfUrl, whatsappUrl } pour l'écran de confirmation.
     const [confirmation, setConfirmation] = useState(null);
 
-    const total = calculateTotal(cart);
     const totalQty = calculateQuantity(cart);
 
     const handleSend = async () => {
@@ -22,11 +21,13 @@ export default function CartSidebar() {
         try {
             // La commande est enregistrée en base AVANT l'ouverture de WhatsApp :
             // même si le client n'envoie pas le message, rien n'est perdu.
+            // Les prix ne sont pas transmis : tout est sur devis, le PDF et le
+            // message WhatsApp ne mentionnent aucun montant.
             const res = await api.createOrder({
                 client_name: name,
                 phone,
-                items: cart.map(({ name: n, category, quantity, price }) => ({
-                    name: n, category, quantity, price,
+                items: cart.map(({ name: n, category, quantity }) => ({
+                    name: n, category, quantity,
                 })),
             });
             if (!res.ok) throw new Error('API error');
@@ -37,10 +38,11 @@ export default function CartSidebar() {
             clearCart();
         } catch {
             // Repli hors-ligne : PDF généré dans le navigateur + message WhatsApp
-            // sans lien (l'ancien comportement).
+            // sans lien (l'ancien comportement) — sans prix, tout est sur devis.
             const client = { name, phone };
-            const orderNumber = generateOrderPDF(cart, client);
-            const { url } = formatWhatsAppMessage(cart, client, orderNumber);
+            const quoteCart = cart.map(({ name: n, category, quantity, id }) => ({ id, name: n, category, quantity }));
+            const orderNumber = generateOrderPDF(quoteCart, client);
+            const { url } = formatWhatsAppMessage(quoteCart, client, orderNumber);
             window.open(url, '_blank');
             setConfirmation({ orderNumber, pdfUrl: null, whatsappUrl: url });
             clearCart();
@@ -137,13 +139,7 @@ export default function CartSidebar() {
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-tight">{item.name}</p>
                                             <p className="text-xs text-slate-400">{item.category}</p>
-                                            {item.price ? (
-                                                <p className="text-sm font-bold text-blue-600 mt-1">
-                                                    {(parseFloat(item.price) * item.quantity).toLocaleString('fr-FR')} FCFA
-                                                </p>
-                                            ) : (
-                                                <p className="text-xs text-slate-400 mt-1">Sur devis</p>
-                                            )}
+                                            <p className="text-xs text-slate-400 mt-1">Sur devis</p>
                                         </div>
                                         <div className="flex flex-col items-end justify-between">
                                             <button onClick={() => removeFromCart(item.id)} className="text-red-300 hover:text-red-500 transition-colors">
@@ -175,13 +171,11 @@ export default function CartSidebar() {
                         {cart.length > 0 && (
                             <div className="border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
 
-                                {/* Total */}
-                                {total > 0 && (
-                                    <div className="flex justify-between text-sm font-bold text-slate-800">
-                                        <span>Total estimé</span>
-                                        <span className="text-blue-600">{total.toLocaleString('fr-FR')} FCFA</span>
-                                    </div>
-                                )}
+                                {/* Tout sur devis : le total est communiqué avec le devis. */}
+                                <div className="flex justify-between text-sm font-bold text-slate-800">
+                                    <span>Total</span>
+                                    <span className="text-blue-600">Sur devis</span>
+                                </div>
 
                                 {/* Formulaire client */}
                                 <input
