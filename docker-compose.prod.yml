@@ -1,0 +1,29 @@
+# ToutPharma — production : images pré-construites par la CI (GHCR).
+# Sur le serveur :
+#   cp .env.deploy.example .env   (et remplir les valeurs)
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+services:
+  backend:
+    image: ${IMAGE_PREFIX:?Définir IMAGE_PREFIX dans .env (ex. ghcr.io/mon-user/mon-repo)}-backend:${TAG:-latest}
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Définir ADMIN_PASSWORD dans .env}
+      ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?Définir ADMIN_TOKEN_SECRET dans .env}
+      PUBLIC_URL: ${PUBLIC_URL:?Définir PUBLIC_URL dans .env (ex. https://toutpharma.sn)}
+      DB_PATH: /app/data/database.sqlite
+    volumes:
+      - toutpharma-data:/app/data
+      - toutpharma-uploads:/app/uploads
+    restart: unless-stopped
+
+  front:
+    image: ${IMAGE_PREFIX}-front:${TAG:-latest}
+    ports:
+      - "${FRONT_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  toutpharma-data:
+  toutpharma-uploads:

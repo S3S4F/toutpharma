@@ -1,0 +1,39 @@
+# Déploiement ToutPharma : se connecte au serveur en SSH et relance la stack
+# avec les dernières images GHCR.
+#
+# Secrets à créer dans GitHub (Settings → Secrets and variables → Actions) :
+#   DEPLOY_HOST     — IP ou domaine du serveur
+#   DEPLOY_USER     — utilisateur SSH
+#   DEPLOY_SSH_KEY  — clé privée SSH (l'utilisateur doit pouvoir lancer docker)
+#   DEPLOY_PATH     — dossier sur le serveur contenant docker-compose.prod.yml
+#                     et le .env (ex. /opt/toutpharma)
+#
+# Déclenchement : manuel (onglet Actions → Deploy → Run workflow),
+# ou automatique après une CI verte sur main/master.
+name: Deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # En cas de déclenchement auto, ne déployer que si la CI a réussi.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Déploiement SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f

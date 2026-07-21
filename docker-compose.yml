@@ -1,0 +1,32 @@
+# ToutPharma — stack complète (build local).
+# Usage : cp .env.deploy.example .env  puis  docker compose up -d --build
+# Site accessible sur http://localhost:${FRONT_PORT:-8080}
+services:
+  backend:
+    build: ./toutpharma-backend
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Définir ADMIN_PASSWORD dans .env}
+      ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?Définir ADMIN_TOKEN_SECRET dans .env}
+      # URL publique du site : sert à construire les liens images + PDF
+      # partagés sur WhatsApp (nginx proxifie /uploads vers ce service).
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      DB_PATH: /app/data/database.sqlite
+    volumes:
+      - toutpharma-data:/app/data
+      - toutpharma-uploads:/app/uploads
+    restart: unless-stopped
+
+  front:
+    build:
+      context: ./toutpharma
+      args:
+        VITE_API_URL: ""   # même origine — nginx proxifie /api et /uploads
+    ports:
+      - "${FRONT_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  toutpharma-data:
+  toutpharma-uploads:

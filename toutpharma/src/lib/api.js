@@ -1,7 +1,9 @@
 // Client API centralisé.
 // L'hôte de l'API était codé en dur (`http://localhost:3001`) à 15 endroits :
 // il est désormais défini une seule fois ici, surchargé en prod via VITE_API_URL.
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+// VITE_API_URL="" (chaîne vide) = même origine : en Docker, nginx sert le
+// front ET proxifie /api + /uploads vers le backend.
+export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 /** Construit une URL absolue vers l'API à partir d'un chemin (`/api/...`). */
 export const apiUrl = (path) => `${API_URL}${path}`;

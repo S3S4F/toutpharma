@@ -1,0 +1,107 @@
+# CI ToutPharma : lint + build, puis publication des images Docker sur GHCR.
+name: CI
+
+on:
+  push:
+    branches: [main, master, "feat/**"]
+    paths:
+      - "toutpharma/**"
+      - "toutpharma-backend/**"
+      - "docker-compose*.yml"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "toutpharma/**"
+      - "toutpharma-backend/**"
+
+jobs:
+  front:
+    name: Front — lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toutpharma
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: toutpharma/package-lock.json
+      - run: npm ci
+      - run: npx eslint src
+      - run: npm run build
+
+  backend:
+    name: Backend — vérification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toutpharma-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: toutpharma-backend/package-lock.json
+      - run: npm ci
+      - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js
+      # Fumée : le serveur démarre et /api/status répond
+      - run: |
+          node server.js &
+          sleep 3
+          curl --fail http://localhost:3001/api/status
+
+  docker:
+    name: Images Docker → GHCR
+    needs: [front, backend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Métadonnées backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-backend
+          tags: |
+            type=raw,value=latest
+            type=sha
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: toutpharma-backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Métadonnées front
+        id: meta-front
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-front
+          tags: |
+            type=raw,value=latest
+            type=sha
+      - name: Build & push front
+        uses: docker/build-push-action@v6
+        with:
+          context: toutpharma
+          push: true
+          tags: ${{ steps.meta-front.outputs.tags }}
+          labels: ${{ steps.meta-front.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

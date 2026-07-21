@@ -31,8 +31,9 @@ const uploadDir = path.join(__dirname, 'uploads');
 const ordersDir = path.join(uploadDir, 'orders');
 [uploadDir, ordersDir].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
-// Database Setup
-const db = new sqlite3.Database('./database.sqlite', (err) => {
+// Database Setup — DB_PATH permet de placer la base sur un volume Docker.
+const DB_PATH = process.env.DB_PATH || './database.sqlite';
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error('Error opening database', err);
     } else {
