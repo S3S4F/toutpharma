@@ -19,11 +19,11 @@ chaque client avec un devis personnalisé.
 |---|---|---|
 | [`toutpharma/`](toutpharma/) | Site vitrine + boutique + **administration** | React 18, Vite, Tailwind CSS |
 | [`toutpharma-backend/`](toutpharma-backend/) | API REST | Node.js, Express, SQLite |
-| [`toutpharma-v2/`](toutpharma-v2/) | Refonte Next.js (en pause — phase 0 uniquement) | Next.js, PostgreSQL, Drizzle |
 | [`docs/`](docs/) | Spécifications et plans | — |
 
-> **Le produit actif est `toutpharma` + `toutpharma-backend`.**
-> La v2 est conservée comme référence pour une future migration.
+> Une refonte Next.js/PostgreSQL avait été amorcée : elle est conservée sur la
+> branche [`feat/toutpharma-v2`](https://github.com/S3S4F/toutpharma/tree/feat/toutpharma-v2)
+> comme référence pour une future migration.
 
 ---
 
@@ -166,7 +166,8 @@ Commandes de sauvegarde prêtes à l'emploi dans [DEPLOIEMENT.md](DEPLOIEMENT.md
 - [ ] Fiches produit enrichies : référence fabricant, unité de vente, fiche technique PDF
 - [ ] **Devis retour** : générer le devis chiffré en PDF depuis l'admin
 - [ ] Acompte **Wave / Orange Money**
-- [ ] Reprise de la **v2 Next.js** (SEO serveur, PostgreSQL) une fois le modèle validé
+- [ ] Reprise de la **v2 Next.js** (SEO serveur, PostgreSQL — branche `feat/toutpharma-v2`)
+  une fois le modèle validé
 
 ---
 
