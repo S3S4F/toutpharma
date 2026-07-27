@@ -2,6 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 
+// Tout utilisateur de la table `user` est administrateur : l'inscription
+// publique est désactivée (`disableSignUp`), les comptes sont créés uniquement
+// via le script create-admin. Pas de distinction de rôle pour l'instant.
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: {
