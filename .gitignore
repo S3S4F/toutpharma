@@ -24,3 +24,6 @@ npm-debug.log*
 
 # Uploads (local dev)
 uploads/
+
+# Artefacts TypeScript
+*.tsbuildinfo
