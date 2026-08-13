@@ -27,29 +27,47 @@ docker compose up -d --build
    git push -u origin main
    ```
 2. La CI (`.github/workflows/ci.yml`) tourne à chaque push :
-   lint + build front, vérification + test de fumée backend.
+   lint + build front, vérification syntaxique backend.
    Sur `main`/`master`, elle publie aussi les images Docker sur
-   **GitHub Container Registry** :
-   - `ghcr.io/votre-user/votre-repo-front:latest`
-   - `ghcr.io/votre-user/votre-repo-backend:latest`
-3. Pour le déploiement automatique, créer 4 secrets GitHub
-   (Settings → Secrets and variables → Actions) :
-   `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`.
+   **Docker Hub** :
+   - `votre-user-dockerhub/toutpharma-front:latest`
+   - `votre-user-dockerhub/toutpharma-backend:latest`
+3. Créer les secrets GitHub suivants (Settings → Secrets and variables →
+   Actions) — le workflow *Deploy* (`.github/workflows/deploy.yml`) les
+   utilise pour se connecter au VPS **et** pour régénérer le `.env` de prod
+   à chaque déploiement :
+
+   | Secret | Rôle |
+   |---|---|
+   | `VPS_HOST` | IP ou domaine du VPS |
+   | `VPS_PORT` | port SSH (ex. `22`) |
+   | `VPS_USERNAME` | utilisateur SSH (doit pouvoir lancer `docker`) |
+   | `VPS_SSH_KEY` | clé privée SSH correspondante |
+   | `DOCKERHUB_USER` | utilisateur Docker Hub |
+   | `DOCKERHUB_PASSWORD` | mot de passe ou access token Docker Hub |
+   | `ADMIN_PASSWORD` | mot de passe de l'admin ToutPharma |
+   | `ADMIN_TOKEN_SECRET` | secret de signature des tokens admin |
+   | `FRONTEND_URL` | URL publique du site (ex. `https://toutpharma.sn`) |
 
 ## 3. Préparer le serveur (une seule fois)
 
-Sur n'importe quel VPS avec Docker (Hetzner, Contabo, OVH, Scaleway…) :
+Sur n'importe quel VPS avec Docker installé (Hetzner, Contabo, OVH, Scaleway…) :
 
 ```bash
-mkdir -p /opt/toutpharma && cd /opt/toutpharma
-# copier docker-compose.prod.yml et .env.deploy.example depuis le repo
-cp .env.deploy.example .env
-nano .env    # ADMIN_PASSWORD, ADMIN_TOKEN_SECRET, PUBLIC_URL=https://votre-domaine,
-             # FRONT_PORT=80, IMAGE_PREFIX=ghcr.io/votre-user/votre-repo
+mkdir -p /opt/toutpharma
+```
 
-# si le repo GitHub est privé, se connecter à GHCR :
-docker login ghcr.io -u VOTRE-USER   # mot de passe = un token GitHub (read:packages)
+C'est tout — le workflow *Deploy* copie lui-même `docker-compose.prod.yml`
+et génère le `.env` à partir des secrets GitHub à chaque déploiement
+(voir §4). Rien à écrire à la main sur le serveur.
 
+Si vous préférez tester manuellement sans passer par la CI, vous pouvez
+toujours copier `docker-compose.prod.yml` + `.env.deploy.example` vous-même,
+remplir `.env` (voir le fichier pour le détail des variables), puis :
+
+```bash
+cd /opt/toutpharma
+docker login -u VOTRE-USER-DOCKERHUB   # si les images sont privées
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
@@ -60,7 +78,8 @@ un reverse-proxy Caddy/Traefik devant `front`.
 ## 4. Déployer une nouvelle version
 
 - **Automatique** : pousser sur `main` → CI verte → le workflow *Deploy*
-  se connecte au serveur et relance la stack avec les nouvelles images.
+  se connecte au VPS, régénère `.env`, relance la stack avec les nouvelles
+  images.
 - **Manuel** : onglet *Actions* → *Deploy* → *Run workflow*,
   ou sur le serveur : `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`.
 

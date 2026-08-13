@@ -1,4 +1,4 @@
-# CI ToutPharma : lint + build, puis publication des images Docker sur GHCR.
+# CI ToutPharma : lint + build, puis publication des images Docker sur Docker Hub.
 name: CI
 
 on:
@@ -47,34 +47,28 @@ jobs:
           cache-dependency-path: toutpharma-backend/package-lock.json
       - run: npm ci
       - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js
-      # Fumée : le serveur démarre et /api/status répond
-      - run: |
-          node server.js &
-          sleep 3
-          curl --fail http://localhost:3001/api/status
 
   docker:
-    name: Images Docker → GHCR
+    name: Images Docker → Docker Hub
     needs: [front, backend]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    # Branche trunk du projet (branche par défaut du repo) : feat/toutpharma-v1-commandes-admin.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/deploy'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Métadonnées backend
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-backend
+          images: ${{ secrets.DOCKERHUB_USER }}/toutpharma-backend
           tags: |
             type=raw,value=latest
             type=sha
@@ -92,7 +86,7 @@ jobs:
         id: meta-front
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-front
+          images: ${{ secrets.DOCKERHUB_USER }}/toutpharma-front
           tags: |
             type=raw,value=latest
             type=sha

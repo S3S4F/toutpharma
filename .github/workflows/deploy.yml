@@ -1,15 +1,3 @@
-# Déploiement ToutPharma : se connecte au serveur en SSH et relance la stack
-# avec les dernières images GHCR.
-#
-# Secrets à créer dans GitHub (Settings → Secrets and variables → Actions) :
-#   DEPLOY_HOST     — IP ou domaine du serveur
-#   DEPLOY_USER     — utilisateur SSH
-#   DEPLOY_SSH_KEY  — clé privée SSH (l'utilisateur doit pouvoir lancer docker)
-#   DEPLOY_PATH     — dossier sur le serveur contenant docker-compose.prod.yml
-#                     et le .env (ex. /opt/toutpharma)
-#
-# Déclenchement : manuel (onglet Actions → Deploy → Run workflow),
-# ou automatique après une CI verte sur main/master.
 name: Deploy
 
 on:
@@ -17,7 +5,10 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main, master]
+    branches: [feat/deploy]
+
+env:
+  DEPLOY_PATH: /opt/toutpharma
 
 jobs:
   deploy:
@@ -25,15 +16,49 @@ jobs:
     # En cas de déclenchement auto, ne déployer que si la CI a réussi.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Préparer le dossier de déploiement
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: mkdir -p "${{ env.DEPLOY_PATH }}"
+
+      - name: Copier docker-compose.prod.yml sur le VPS
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: docker-compose.prod.yml
+          target: ${{ env.DEPLOY_PATH }}
+
       - name: Déploiement SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ env.DEPLOY_PATH }}"
+
+            cat > .env <<ENVEOF
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            ADMIN_TOKEN_SECRET=${{ secrets.ADMIN_TOKEN_SECRET }}
+            PUBLIC_URL=${{ secrets.FRONTEND_URL }}
+            FRONT_PORT=80
+            IMAGE_PREFIX=${{ secrets.DOCKERHUB_USER }}/toutpharma
+            TAG=latest
+            ENVEOF
+            chmod 600 .env
+
+            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

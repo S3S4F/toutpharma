@@ -1,11 +1,11 @@
-# ToutPharma — production : images pré-construites par la CI (GHCR).
+# ToutPharma — production : images pré-construites par la CI (Docker Hub).
 # Sur le serveur :
 #   cp .env.deploy.example .env   (et remplir les valeurs)
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
 services:
   backend:
-    image: ${IMAGE_PREFIX:?Définir IMAGE_PREFIX dans .env (ex. ghcr.io/mon-user/mon-repo)}-backend:${TAG:-latest}
+    image: ${IMAGE_PREFIX:?Définir IMAGE_PREFIX dans .env (ex. mon-user-dockerhub/toutpharma)}-backend:${TAG:-latest}
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Définir ADMIN_PASSWORD dans .env}
       ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?Définir ADMIN_TOKEN_SECRET dans .env}
@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   front:
-    image: ${IMAGE_PREFIX}-front:${TAG:-latest}
+    image: ${IMAGE_PREFIX:?Définir IMAGE_PREFIX dans .env (ex. mon-user-dockerhub/toutpharma)}-front:${TAG:-latest}
     ports:
       - "${FRONT_PORT:-80}:80"
     depends_on:
