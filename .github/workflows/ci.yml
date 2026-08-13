@@ -59,30 +59,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Diagnostic secrets Docker Hub (temporaire — ne révèle aucune valeur)
-        # N'affiche que la longueur des secrets, pour repérer un espace/caractère
-        # invisible parasite sans jamais exposer leur contenu. À retirer une fois
-        # la connexion Docker Hub validée.
-        env:
-          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-        run: |
-          echo "Longueur DOCKERHUB_USER (brute) : $(printf '%s' "$DOCKERHUB_USER" | wc -c)"
-          echo "Longueur DOCKERHUB_USER (sans espaces) : $(printf '%s' "$DOCKERHUB_USER" | tr -d '[:space:]' | wc -c)"
-          echo "Longueur DOCKERHUB_PASSWORD (brute) : $(printf '%s' "$DOCKERHUB_PASSWORD" | wc -c)"
-          echo "Longueur DOCKERHUB_PASSWORD (sans espaces) : $(printf '%s' "$DOCKERHUB_PASSWORD" | tr -d '[:space:]' | wc -c)"
-      - name: Connexion Docker Hub
-        # docker/login-action encode lui-même user:password en base64 ; un espace,
-        # une tabulation ou un caractère invisible parasite dans le secret (fréquent
-        # selon comment il a été saisi) suffit à produire "malformed HTTP
-        # Authorization header". `docker login` en CLI nettoie les valeurs avant de
-        # les utiliser, donc plus robuste.
-        env:
-          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-        run: |
-          printf '%s' "$DOCKERHUB_PASSWORD" | tr -d '[:space:]' | \
-            docker login -u "$(printf '%s' "$DOCKERHUB_USER" | tr -d '[:space:]')" --password-stdin
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Métadonnées backend
         id: meta-backend

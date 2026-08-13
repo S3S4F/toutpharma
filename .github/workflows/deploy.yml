@@ -58,8 +58,7 @@ jobs:
             ENVEOF
             chmod 600 .env
 
-            printf '%s' "${{ secrets.DOCKERHUB_PASSWORD }}" | tr -d '[:space:]' | \
-              docker login -u "$(printf '%s' '${{ secrets.DOCKERHUB_USER }}' | tr -d '[:space:]')" --password-stdin
+            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
