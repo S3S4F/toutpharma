@@ -59,10 +59,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Connexion Docker Hub
+        # docker/login-action encode lui-même user:password en base64 ; un \r ou \n
+        # parasite dans le secret (fréquent selon comment il a été saisi) suffit à
+        # produire "malformed HTTP Authorization header". `docker login` en CLI
+        # nettoie les valeurs avant de les utiliser, donc plus robuste.
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          printf '%s' "$DOCKERHUB_PASSWORD" | tr -d '\r\n' | \
+            docker login -u "$(printf '%s' "$DOCKERHUB_USER" | tr -d '\r\n')" --password-stdin
 
       - name: Métadonnées backend
         id: meta-backend
