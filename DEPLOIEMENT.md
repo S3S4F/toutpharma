@@ -54,19 +54,23 @@ docker compose up -d --build
 Sur n'importe quel VPS avec Docker installé (Hetzner, Contabo, OVH, Scaleway…) :
 
 ```bash
-mkdir -p /opt/toutpharma
+mkdir -p ~/toutpharma
 ```
 
 C'est tout — le workflow *Deploy* copie lui-même `docker-compose.prod.yml`
 et génère le `.env` à partir des secrets GitHub à chaque déploiement
 (voir §4). Rien à écrire à la main sur le serveur.
 
+**Port** : le VPS héberge plusieurs projets, les ports sont attribués à
+partir de 8101. ToutPharma est exposé sur `FRONT_PORT=8101`
+(`http://VPS_HOST:8101`), à mettre derrière le reverse-proxy/domaine final.
+
 Si vous préférez tester manuellement sans passer par la CI, vous pouvez
 toujours copier `docker-compose.prod.yml` + `.env.deploy.example` vous-même,
 remplir `.env` (voir le fichier pour le détail des variables), puis :
 
 ```bash
-cd /opt/toutpharma
+cd ~/toutpharma
 docker login -u VOTRE-USER-DOCKERHUB   # si les images sont privées
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
