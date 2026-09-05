@@ -3,7 +3,12 @@
 // passe par requireAuth qui vérifie signature + expiration.
 const crypto = require('crypto');
 
-const SECRET = process.env.ADMIN_TOKEN_SECRET || 'dev-secret-change-me';
+const isProduction = process.env.NODE_ENV === 'production';
+const configuredSecret = process.env.ADMIN_TOKEN_SECRET;
+if (isProduction && (!configuredSecret || configuredSecret.length < 32)) {
+    throw new Error('ADMIN_TOKEN_SECRET doit contenir au moins 32 caractères en production.');
+}
+const SECRET = configuredSecret || 'dev-secret-change-me';
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 jours
 
 const sign = (payload) =>

@@ -20,7 +20,7 @@ export default function ServiceBookingModal({ service, onClose }) {
                 client_name: formData.name,
                 phone: formData.phone,
                 service_type: service.title,
-                date_time: `${formData.date} ${formData.time}`
+                date_time: `${formData.date}T${formData.time}:00`
             });
             if (res.ok) setStep(3);
         } catch (err) {

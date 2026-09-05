@@ -40,6 +40,14 @@ const postForm = (path, formData, auth = false) =>
     body: formData,
   }).then(handleUnauthorized);
 
+const getAuthenticatedBlob = (path) =>
+  fetch(apiUrl(path), { headers: authHeaders() })
+    .then(handleUnauthorized)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Téléchargement impossible (${res.status})`);
+      return res.blob();
+    });
+
 export const api = {
   // Lectures publiques → renvoient les données déjà extraites de l'enveloppe { data }.
   getProducts: () => getJson("/api/products").then((d) => d.data || []),
@@ -49,6 +57,7 @@ export const api = {
   // Lectures admin (token requis)
   getAppointments: () => getJson("/api/appointments", true).then((d) => d.data || []),
   getPrescriptions: () => getJson("/api/prescriptions", true).then((d) => d.data || []),
+  getPrescriptionImage: (id) => getAuthenticatedBlob(`/api/prescriptions/${id}/image`),
   getOrders: () => getJson("/api/orders", true).then((d) => d.data || []),
   getStats: () => getJson("/api/stats", true).then((d) => d.data),
 

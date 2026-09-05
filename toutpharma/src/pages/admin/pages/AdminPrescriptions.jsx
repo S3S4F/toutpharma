@@ -6,6 +6,7 @@ import { formatDate } from '../../../utils/format';
 export default function AdminPrescriptions() {
     const [prescriptions, setPrescriptions] = useState([]);
     const [selectedImage, setSelectedImage] = useState(null);
+    const [imageError, setImageError] = useState('');
 
     const fetchPrescriptions = async () => {
         try {
@@ -15,7 +16,31 @@ export default function AdminPrescriptions() {
         }
     };
 
-    useEffect(() => { fetchPrescriptions(); }, []);
+    useEffect(() => {
+        fetchPrescriptions();
+        return () => {
+            if (selectedImage) URL.revokeObjectURL(selectedImage);
+        };
+        // L'URL courante est libérée par closeImage ; ce cleanup protège aussi
+        // le démontage direct de la page.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const closeImage = () => {
+        if (selectedImage) URL.revokeObjectURL(selectedImage);
+        setSelectedImage(null);
+        setImageError('');
+    };
+
+    const openImage = async (prescription) => {
+        setImageError('');
+        try {
+            const blob = await api.getPrescriptionImage(prescription.id);
+            setSelectedImage(URL.createObjectURL(blob));
+        } catch {
+            setImageError('Impossible de charger cette ordonnance.');
+        }
+    };
 
     const handleStatusChange = async (pres, status) => {
         setPrescriptions((prev) => prev.map((p) => (p.id === pres.id ? { ...p, status } : p)));
@@ -85,7 +110,7 @@ export default function AdminPrescriptions() {
                                     </td>
                                     <td className="p-4 text-right pr-6">
                                         <button
-                                            onClick={() => setSelectedImage(pres.image_url)}
+                                            onClick={() => openImage(pres)}
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-giphar-green hover:bg-green-50 transition-colors"
                                         >
                                             <Eye size={16} />
@@ -106,9 +131,11 @@ export default function AdminPrescriptions() {
                 </div>
             </div>
 
+            {imageError && <p className="mt-4 text-sm text-red-600">{imageError}</p>}
+
             {/* Image Modal */}
             {selectedImage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={closeImage}>
                     <div className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="absolute top-4 right-4 z-10 flex gap-2">
                             <a
@@ -121,7 +148,7 @@ export default function AdminPrescriptions() {
                                 <Download size={20} />
                             </a>
                             <button
-                                onClick={() => setSelectedImage(null)}
+                                onClick={closeImage}
                                 className="p-2 bg-white/90 rounded-full text-slate-700 hover:text-red-500 hover:bg-white shadow-sm transition-all"
                             >
                                 <X size={20} />

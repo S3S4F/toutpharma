@@ -68,6 +68,7 @@ export default function ProductForm() {
                 const imageFormData = new FormData();
                 imageFormData.append('image', formData.image);
                 const uploadData = await api.uploadImage(imageFormData);
+                if (!uploadData.imageUrl) throw new Error(uploadData.error || 'Upload de l’image impossible');
                 imageUrl = uploadData.imageUrl;
             }
 
@@ -85,6 +86,9 @@ export default function ProductForm() {
 
             if (res.ok) {
                 navigate('/admin/products');
+            } else {
+                const error = await res.json().catch(() => ({}));
+                throw new Error(error.error || 'Enregistrement impossible');
             }
         } catch (error) {
             console.error('Error saving product:', error);

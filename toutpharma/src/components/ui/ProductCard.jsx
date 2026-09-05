@@ -8,11 +8,15 @@ export default function ProductCard({ product }) {
     return (
         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-blue-100 transition-all duration-300 group">
             <div className="relative mb-4 overflow-hidden rounded-2xl bg-gray-50 h-48 flex items-center justify-center">
-                <img
-                    src={product.image_url || product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
+                {(product.image_url || product.image) ? (
+                    <img
+                        src={product.image_url || product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                ) : (
+                    <span className="text-sm text-slate-400">Image indisponible</span>
+                )}
                 <button
                     onClick={() => addToCart(product)}
                     className="absolute bottom-3 right-3 bg-white p-2 rounded-xl text-blue-600 shadow-md hover:bg-blue-600 hover:text-white transition-colors transform translate-y-12 group-hover:translate-y-0"
