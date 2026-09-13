@@ -46,7 +46,7 @@ jobs:
           cache: npm
           cache-dependency-path: toutpharma-backend/package-lock.json
       - run: npm ci
-      - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js
+      - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js && node --check lib/images.js
       # Fumée : le serveur démarre et /api/status répond
       - run: |
           node server.js &

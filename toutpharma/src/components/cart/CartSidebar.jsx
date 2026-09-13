@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { formatWhatsAppMessage } from '../../utils/whatsapp';
 import { calculateQuantity } from '../../utils/cart';
 import { generateOrderPDF } from '../../utils/generatePDF';
-import { api } from '../../lib/api';
+import { api, assetUrl } from '../../lib/api';
 
 export default function CartSidebar() {
     const { cart, isOpen, setIsOpen, removeFromCart, updateQuantity, clearCart } = useCart();
@@ -131,7 +131,7 @@ export default function CartSidebar() {
                                     <div key={item.id} className="flex gap-3 py-2 border-b border-gray-50">
                                         <div className="w-14 h-14 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
                                             <img
-                                                src={item.image_url || item.image || ''}
+                                                src={assetUrl(item.image_url || item.image)}
                                                 alt={item.name}
                                                 className="w-full h-full object-cover"
                                             />

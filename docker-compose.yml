@@ -7,8 +7,8 @@ services:
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Définir ADMIN_PASSWORD dans .env}
       ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?Définir ADMIN_TOKEN_SECRET dans .env}
-      # URL publique du site : sert à construire les liens images + PDF
-      # partagés sur WhatsApp (nginx proxifie /uploads vers ce service).
+      # URL publique du site : sert UNIQUEMENT aux liens PDF partagés dans les
+      # messages WhatsApp (les images sont stockées en chemins relatifs).
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
       DB_PATH: /app/data/database.sqlite
     volumes:

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { assetUrl } from '../../lib/api';
 
 export default function ProductCard({ product }) {
     const { addToCart } = useCart();
@@ -9,8 +10,9 @@ export default function ProductCard({ product }) {
         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-blue-100 transition-all duration-300 group">
             <div className="relative mb-4 overflow-hidden rounded-2xl bg-gray-50 h-48 flex items-center justify-center">
                 <img
-                    src={product.image_url || product.image}
+                    src={assetUrl(product.image_url || product.image)}
                     alt={product.name}
+                    loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                 />
                 <button

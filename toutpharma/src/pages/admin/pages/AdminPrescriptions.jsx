@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Phone, Eye, X, Download } from 'lucide-react';
-import { api } from '../../../lib/api';
+import { api, assetUrl } from '../../../lib/api';
 import { formatDate } from '../../../utils/format';
 
 export default function AdminPrescriptions() {
@@ -85,7 +85,7 @@ export default function AdminPrescriptions() {
                                     </td>
                                     <td className="p-4 text-right pr-6">
                                         <button
-                                            onClick={() => setSelectedImage(pres.image_url)}
+                                            onClick={() => setSelectedImage(assetUrl(pres.image_url))}
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-giphar-green hover:bg-green-50 transition-colors"
                                         >
                                             <Eye size={16} />

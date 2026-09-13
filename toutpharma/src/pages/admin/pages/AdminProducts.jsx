@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2, Search, Pencil } from 'lucide-react';
-import { api } from '../../../lib/api';
+import { api, assetUrl } from '../../../lib/api';
 import { useProducts } from '../../../hooks/useProducts';
 
 export default function AdminProducts() {
@@ -76,7 +76,7 @@ export default function AdminProducts() {
                                     <td className="p-4 pl-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
-                                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                                <img src={assetUrl(product.image_url)} alt={product.name} className="w-full h-full object-cover" />
                                             </div>
                                             <span className="font-semibold text-slate-900 line-clamp-2">{product.name}</span>
                                         </div>

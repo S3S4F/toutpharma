@@ -8,6 +8,19 @@ export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 /** Construit une URL absolue vers l'API à partir d'un chemin (`/api/...`). */
 export const apiUrl = (path) => `${API_URL}${path}`;
 
+/**
+ * Résout l'URL d'un fichier uploadé. Le backend stocke des chemins relatifs
+ * (`/uploads/x.webp`) pour survivre aux changements de domaine ; les URLs
+ * externes (https://...) passent telles quelles.
+ */
+export const assetUrl = (url) => {
+  if (!url) return "";
+  // "//cdn.exemple.com/x.jpg" est une URL externe (protocol-relative), pas un
+  // chemin local : on ne préfixe que les chemins simples type "/uploads/...".
+  if (url.startsWith("//")) return url;
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+};
+
 /** En-tête d'authentification admin (token émis au login). */
 const authHeaders = () => {
   const token = localStorage.getItem("adminToken");

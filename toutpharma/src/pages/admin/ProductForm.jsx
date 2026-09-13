@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, Loader } from 'lucide-react';
-import { api } from '../../lib/api';
+import { api, assetUrl } from '../../lib/api';
 
 // Formulaire produit : création (/admin/products/new) et édition
 // (/admin/products/:id/edit) partagent le même composant.
@@ -34,7 +34,7 @@ export default function ProductForm() {
                     image: null,
                     image_url: product.image_url || ''
                 });
-                setPreview(product.image_url || null);
+                setPreview(product.image_url ? assetUrl(product.image_url) : null);
             }
         }).catch((e) => console.error('Error loading product:', e));
     }, [id, isEdit]);
@@ -68,6 +68,13 @@ export default function ProductForm() {
                 const imageFormData = new FormData();
                 imageFormData.append('image', formData.image);
                 const uploadData = await api.uploadImage(imageFormData);
+                if (!uploadData.imageUrl) {
+                    // Échec d'upload (format non supporté, fichier trop lourd…) :
+                    // on s'arrête au lieu de créer un produit sans image.
+                    alert(uploadData.error || "L'image n'a pas pu être envoyée. Réessayez avec une photo JPG ou PNG.");
+                    setLoading(false);
+                    return;
+                }
                 imageUrl = uploadData.imageUrl;
             }
 
@@ -85,6 +92,9 @@ export default function ProductForm() {
 
             if (res.ok) {
                 navigate('/admin/products');
+            } else {
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || "Le produit n'a pas pu être enregistré. Réessayez.");
             }
         } catch (error) {
             console.error('Error saving product:', error);

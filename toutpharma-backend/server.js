@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { createToken, requireAuth } = require('./lib/auth');
 const { generateOrderPdf } = require('./lib/orderPdf');
+const { saveUploadedImage, ACCEPTED_MIMES, FORMATS_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } = require('./lib/images');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,7 +30,12 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Ensure uploads directories exist
 const uploadDir = path.join(__dirname, 'uploads');
 const ordersDir = path.join(uploadDir, 'orders');
-[uploadDir, ordersDir].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+const tmpDir = path.join(uploadDir, 'tmp');
+[uploadDir, ordersDir, tmpDir].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+// Purge des fichiers temporaires laissés par un arrêt brutal.
+fs.readdir(tmpDir, (err, files) => {
+    if (!err) files.forEach((f) => fs.unlink(path.join(tmpDir, f), () => { }));
+});
 
 // Database Setup — DB_PATH permet de placer la base sur un volume Docker.
 const DB_PATH = process.env.DB_PATH || './database.sqlite';
@@ -43,6 +49,9 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 });
 
 function createTables() {
+    // db.serialize : garantit que les CREATE TABLE s'exécutent avant les
+    // migrations qui suivent (le driver sqlite3 est parallèle par défaut).
+    db.serialize(() => {
     // Products Table
     db.run(`CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,38 +123,58 @@ function createTables() {
             db.run(`ALTER TABLE pharmacy_info ADD COLUMN whatsapp_number TEXT`, () => { });
         }
     });
+
+    // Migration : les URLs d'uploads étaient stockées en absolu
+    // (http://localhost:3001/uploads/x.png) — elles cassaient au changement de
+    // domaine. On ne stocke plus que le chemin relatif (/uploads/x.png).
+    // Ancrée sur NOS origines uniquement : une image hébergée ailleurs
+    // (https://cdn.exemple.com/uploads/x.jpg) ne doit pas être réécrite.
+    const relativize = (table) => db.run(
+        `UPDATE ${table}
+            SET image_url = substr(image_url, instr(image_url, '/uploads/'))
+          WHERE instr(image_url, '/uploads/') > 0
+            AND (image_url LIKE 'http://localhost%'
+              OR image_url LIKE 'https://localhost%'
+              OR image_url LIKE 'http://127.0.0.1%'
+              OR image_url LIKE ? || '%')`,
+        [PUBLIC_URL],
+        (err) => { if (err) console.error(`Migration image_url ${table}:`, err.message); }
+    );
+    relativize('products');
+    relativize('prescriptions');
+    }); // fin db.serialize
 }
 
-// Multer Config for Image Uploads — types d'images uniquement, 5 Mo max.
-const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
+// Multer Config for Image Uploads — écrit dans un dossier temporaire (pas en
+// RAM : l'endpoint ordonnances est public), puis sharp normalise l'image
+// (rotation EXIF, resize 1600px, conversion WebP) et supprime le temporaire.
 const upload = multer({
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, tmpDir),
+        filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}`),
+    }),
+    limits: { fileSize: MAX_UPLOAD_BYTES },
     fileFilter: (req, file, cb) => {
-        if (IMAGE_MIMES.includes(file.mimetype)) cb(null, true);
-        else cb(new Error('Type de fichier non autorisé (images uniquement).'));
+        if (ACCEPTED_MIMES.includes(file.mimetype)) cb(null, true);
+        else cb(new Error(`Format non supporté — utilisez une image ${FORMATS_LABEL}.`));
     }
 });
 
-// Rate limiting minimal en mémoire sur la création de commande (anti-spam).
-const orderHits = new Map();
-const orderRateLimit = (req, res, next) => {
-    const ip = req.ip || 'unknown';
+// Rate limiting minimal en mémoire (anti-spam) pour les endpoints publics
+// d'écriture : création de commande et upload d'ordonnance.
+const rateBuckets = new Map();
+const rateLimit = (maxPerMinute) => (req, res, next) => {
+    const key = `${req.ip || 'unknown'}:${req.path}`;
     const now = Date.now();
-    const hits = (orderHits.get(ip) || []).filter((t) => now - t < 60_000);
-    if (hits.length >= 10) return res.status(429).json({ error: 'Trop de demandes, réessayez dans une minute.' });
+    const hits = (rateBuckets.get(key) || []).filter((t) => now - t < 60_000);
+    if (hits.length >= maxPerMinute) {
+        return res.status(429).json({ error: 'Trop de demandes, réessayez dans une minute.' });
+    }
     hits.push(now);
-    orderHits.set(ip, hits);
+    rateBuckets.set(key, hits);
     next();
 };
+const orderRateLimit = rateLimit(10);
 
 // Helper : numéro WhatsApp courant (paramétrable dans l'admin).
 const getWhatsappNumber = (cb) => {
@@ -376,15 +405,23 @@ app.patch('/api/appointments/:id', requireAuth, (req, res) => {
 });
 
 // --- PRESCRIPTIONS ---
-// POST upload prescription (public)
-app.post('/api/prescriptions', upload.single('image'), (req, res) => {
-    if (!req.file) return res.status(400).send('No file uploaded.');
-
-    const imageUrl = `${PUBLIC_URL}/uploads/${req.file.filename}`;
+// POST upload prescription (public, rate-limité)
+app.post('/api/prescriptions', rateLimit(10), upload.single('image'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu.' });
     const { phone, client_name } = req.body;
+    if (!phone || !String(phone).trim()) return res.status(400).json({ error: 'Téléphone requis.' });
+
+    let imageUrl;
+    try {
+        // Chemin relatif : survit aux changements de domaine.
+        imageUrl = await saveUploadedImage(req.file, uploadDir);
+    } catch (e) {
+        console.error('Image processing failed:', e.message);
+        return res.status(400).json({ error: `Image illisible — utilisez une photo ${FORMATS_LABEL}.` });
+    }
 
     const sql = 'INSERT INTO prescriptions (client_name, phone, image_url) VALUES (?,?,?)';
-    db.run(sql, [client_name || 'Anonyme', phone, imageUrl], function (err) {
+    db.run(sql, [client_name || 'Anonyme', String(phone).slice(0, 30), imageUrl], function (err) {
         if (err) return res.status(400).json({ "error": err.message });
         res.json({ "message": "success", "imageUrl": imageUrl, "id": this.lastID });
     });
@@ -489,13 +526,17 @@ app.get('/api/status', (req, res) => {
 });
 
 // Upload Image Utility (admin — utilisé par le formulaire produit)
-app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
+app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) => {
     if (!req.file) {
-        return res.status(400).send('No file uploaded.');
+        return res.status(400).json({ error: 'Aucun fichier reçu.' });
     }
-    // Return the URL to access the file
-    const imageUrl = `${PUBLIC_URL}/uploads/${req.file.filename}`;
-    res.json({ imageUrl });
+    try {
+        // Chemin relatif : le front le résout sur son origine (assetUrl).
+        res.json({ imageUrl: await saveUploadedImage(req.file, uploadDir) });
+    } catch (e) {
+        console.error('Image processing failed:', e.message);
+        res.status(400).json({ error: `Image illisible — utilisez une photo ${FORMATS_LABEL}.` });
+    }
 });
 
 // --- STATS (Dashboard, admin) ---
@@ -541,6 +582,9 @@ app.post('/api/login', (req, res) => {
 
 // Gestion d'erreur (multer : taille / type de fichier)
 app.use((err, req, res, next) => {
+    if (err && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: `Image trop lourde (${MAX_UPLOAD_LABEL} maximum).` });
+    }
     if (err) return res.status(400).json({ error: err.message });
     next();
 });
