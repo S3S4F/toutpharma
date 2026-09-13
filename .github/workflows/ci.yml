@@ -47,11 +47,9 @@ jobs:
           cache-dependency-path: toutpharma-backend/package-lock.json
       - run: npm ci
       - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js && node --check lib/images.js
-      # Fumée : le serveur démarre et /api/status répond
-      - run: |
-          node server.js &
-          sleep 3
-          curl --fail http://localhost:3001/api/status
+      # Suite de tests d'intégration (node:test) : démarre le serveur et
+      # vérifie uploads, confidentialité des ordonnances, prix, rate limits.
+      - run: npm test
 
   docker:
     name: Images Docker → GHCR

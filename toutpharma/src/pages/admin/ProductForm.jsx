@@ -68,13 +68,9 @@ export default function ProductForm() {
                 const imageFormData = new FormData();
                 imageFormData.append('image', formData.image);
                 const uploadData = await api.uploadImage(imageFormData);
-                if (!uploadData.imageUrl) {
-                    // Échec d'upload (format non supporté, fichier trop lourd…) :
-                    // on s'arrête au lieu de créer un produit sans image.
-                    alert(uploadData.error || "L'image n'a pas pu être envoyée. Réessayez avec une photo JPG ou PNG.");
-                    setLoading(false);
-                    return;
-                }
+                // Échec d'upload (format non supporté, fichier trop lourd…) :
+                // on s'arrête au lieu de créer un produit sans image.
+                if (!uploadData.imageUrl) throw new Error(uploadData.error || "L'image n'a pas pu être envoyée. Réessayez avec une photo JPG, PNG ou WebP.");
                 imageUrl = uploadData.imageUrl;
             }
 
@@ -94,11 +90,11 @@ export default function ProductForm() {
                 navigate('/admin/products');
             } else {
                 const data = await res.json().catch(() => ({}));
-                alert(data.error || "Le produit n'a pas pu être enregistré. Réessayez.");
+                throw new Error(data.error || 'Enregistrement impossible');
             }
         } catch (error) {
             console.error('Error saving product:', error);
-            alert('Erreur lors de l\'enregistrement du produit');
+            alert(error.message || 'Erreur lors de l\'enregistrement du produit');
         } finally {
             setLoading(false);
         }

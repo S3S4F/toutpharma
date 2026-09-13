@@ -15,7 +15,7 @@ const MAX_UPLOAD_LABEL = `${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} Mo`;
 /**
  * Normalise une image (fichier temporaire multer) et l'écrit dans outputDir.
  * Le fichier temporaire est supprimé dans tous les cas.
- * @returns {Promise<string>} l'URL relative du fichier écrit (ex. "/uploads/<uuid>.webp")
+ * @returns {Promise<string>} le nom du fichier écrit (ex. "<uuid>.webp")
  */
 const saveUploadedImage = async (file, outputDir) => {
     const fileName = `${crypto.randomUUID()}.webp`;
@@ -28,7 +28,7 @@ const saveUploadedImage = async (file, outputDir) => {
     } finally {
         fs.unlink(file.path, () => { });
     }
-    return `/uploads/${fileName}`;
+    return fileName;
 };
 
 module.exports = { saveUploadedImage, ACCEPTED_MIMES, FORMATS_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL };

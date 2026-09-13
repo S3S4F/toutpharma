@@ -10,31 +10,62 @@ const { generateOrderPdf } = require('./lib/orderPdf');
 const { saveUploadedImage, ACCEPTED_MIMES, FORMATS_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } = require('./lib/images');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 // URL publique utilisée pour construire les liens vers les images uploadées.
 // En prod, définir PUBLIC_URL sur le domaine réel de l'API.
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 // Mot de passe admin : à définir en prod via ADMIN_PASSWORD.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-if (!process.env.ADMIN_PASSWORD) {
+if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12)) {
+    throw new Error('ADMIN_PASSWORD doit contenir au moins 12 caractères en production.');
+}
+if (!process.env.ADMIN_PASSWORD && process.env.NODE_ENV !== 'test') {
     console.warn('⚠️  ADMIN_PASSWORD non défini — mot de passe de développement utilisé.');
 }
 // Numéro WhatsApp par défaut (modifiable dans l'admin, table pharmacy_info).
 const DEFAULT_WHATSAPP = '221781669777';
 
 // Middleware
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((v) => v.trim()).filter(Boolean);
+app.use(cors({
+    origin: allowedOrigins.length ? allowedOrigins : process.env.NODE_ENV !== 'production',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+}));
 app.use(express.json({ limit: '1mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    next();
+});
 
 // Ensure uploads directories exist
-const uploadDir = path.join(__dirname, 'uploads');
+const uploadDir = process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads');
 const ordersDir = path.join(uploadDir, 'orders');
+const productsDir = path.join(uploadDir, 'products');
+const prescriptionsDir = path.join(uploadDir, 'prescriptions');
 const tmpDir = path.join(uploadDir, 'tmp');
-[uploadDir, ordersDir, tmpDir].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+[uploadDir, ordersDir, productsDir, prescriptionsDir, tmpDir].forEach((d) => {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+});
 // Purge des fichiers temporaires laissés par un arrêt brutal.
 fs.readdir(tmpDir, (err, files) => {
     if (!err) files.forEach((f) => fs.unlink(path.join(tmpDir, f), () => { }));
+});
+app.use('/uploads/orders', express.static(ordersDir));
+app.use('/uploads/products', express.static(productsDir));
+// Compatibilité avec les anciennes images produits placées à la racine de
+// uploads, sans réexposer les ordonnances historiques.
+app.get('/uploads/:filename', (req, res) => {
+    const filename = path.basename(req.params.filename);
+    db.get('SELECT id FROM products WHERE image_url LIKE ?', [`%/${filename}`], (err, row) => {
+        if (err) return res.status(500).end();
+        if (!row) return res.status(404).end();
+        const legacyPath = path.join(uploadDir, filename);
+        if (!fs.existsSync(legacyPath)) return res.status(404).end();
+        res.sendFile(legacyPath);
+    });
 });
 
 // Database Setup — DB_PATH permet de placer la base sur un volume Docker.
@@ -101,6 +132,11 @@ function createTables() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS order_sequences (
+        year INTEGER PRIMARY KEY,
+        last_value INTEGER NOT NULL
+    )`);
+
     // Pharmacy Info Table (Single Row)
     db.run(`CREATE TABLE IF NOT EXISTS pharmacy_info (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -147,7 +183,9 @@ function createTables() {
 
 // Multer Config for Image Uploads — écrit dans un dossier temporaire (pas en
 // RAM : l'endpoint ordonnances est public), puis sharp normalise l'image
-// (rotation EXIF, resize 1600px, conversion WebP) et supprime le temporaire.
+// (rotation EXIF, resize 1600px, conversion WebP) vers son dossier final
+// (products/ ou prescriptions/) et supprime le temporaire. Décoder l'image
+// avec sharp vaut validation du contenu : un faux fichier image est rejeté.
 const upload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => cb(null, tmpDir),
@@ -160,21 +198,23 @@ const upload = multer({
     }
 });
 
-// Rate limiting minimal en mémoire (anti-spam) pour les endpoints publics
-// d'écriture : création de commande et upload d'ordonnance.
-const rateBuckets = new Map();
-const rateLimit = (maxPerMinute) => (req, res, next) => {
-    const key = `${req.ip || 'unknown'}:${req.path}`;
-    const now = Date.now();
-    const hits = (rateBuckets.get(key) || []).filter((t) => now - t < 60_000);
-    if (hits.length >= maxPerMinute) {
-        return res.status(429).json({ error: 'Trop de demandes, réessayez dans une minute.' });
-    }
-    hits.push(now);
-    rateBuckets.set(key, hits);
-    next();
+// Rate limiting minimal en mémoire (anti-spam) pour les endpoints publics.
+const createRateLimit = ({ windowMs, max, message }) => {
+    const hitsByIp = new Map();
+    return (req, res, next) => {
+        const ip = req.ip || req.socket.remoteAddress || 'unknown';
+        const now = Date.now();
+        const hits = (hitsByIp.get(ip) || []).filter((time) => now - time < windowMs);
+        if (hits.length >= max) return res.status(429).json({ error: message });
+        hits.push(now);
+        hitsByIp.set(ip, hits);
+        next();
+    };
 };
-const orderRateLimit = rateLimit(10);
+const orderRateLimit = createRateLimit({ windowMs: 60_000, max: 10, message: 'Trop de commandes, réessayez dans une minute.' });
+const appointmentRateLimit = createRateLimit({ windowMs: 60_000, max: 10, message: 'Trop de rendez-vous, réessayez dans une minute.' });
+const prescriptionRateLimit = createRateLimit({ windowMs: 60_000, max: 5, message: 'Trop d’envois, réessayez dans une minute.' });
+const loginRateLimit = createRateLimit({ windowMs: 15 * 60_000, max: 5, message: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' });
 
 // Helper : numéro WhatsApp courant (paramétrable dans l'admin).
 const getWhatsappNumber = (cb) => {
@@ -196,6 +236,8 @@ const formatIntlPhone = (num) => {
 
 // --- PRODUCTS ---
 // GET all products (public — catalogue du site)
+// image_url est renvoyée telle que stockée : chemin relatif (/uploads/...)
+// résolu côté front par assetUrl(), ou URL externe conservée telle quelle.
 app.get('/api/products', (req, res) => {
     db.all("SELECT * FROM products ORDER BY created_at DESC", [], (err, rows) => {
         if (err) res.status(400).json({ "error": err.message });
@@ -264,7 +306,9 @@ app.post('/api/orders', orderRateLimit, async (req, res) => {
             name: String(it.name).slice(0, 200),
             category: it.category ? String(it.category).slice(0, 100) : '',
             quantity,
-            price: parseFloat(it.price) || 0,
+            // Le catalogue est « sur devis » : ne jamais faire confiance à un prix
+            // fourni par le navigateur.
+            price: 0,
         });
     }
     const cleanName = client_name ? String(client_name).slice(0, 120) : '';
@@ -276,12 +320,17 @@ app.post('/api/orders', orderRateLimit, async (req, res) => {
     // lignes ont été supprimées manuellement.
     const year = new Date().getFullYear();
     db.get(
-        `SELECT order_number FROM orders WHERE order_number LIKE ? ORDER BY order_number DESC LIMIT 1`,
-        [`CMD-${year}-%`],
+        `INSERT INTO order_sequences(year, last_value)
+         VALUES (?, COALESCE((
+            SELECT MAX(CAST(substr(order_number, 10) AS INTEGER))
+            FROM orders WHERE order_number LIKE ?
+         ), 0) + 1)
+         ON CONFLICT(year) DO UPDATE SET last_value = last_value + 1
+         RETURNING last_value`,
+        [year, `CMD-${year}-%`],
         (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        const lastSeq = row ? parseInt(row.order_number.split('-')[2], 10) : 0;
-        const orderNumber = `CMD-${year}-${String((lastSeq || 0) + 1).padStart(4, '0')}`;
+        const orderNumber = `CMD-${year}-${String(row.last_value).padStart(4, '0')}`;
 
         // Le numéro configuré dans l'admin sert à la fois au lien wa.me
         // et au téléphone « Fournisseur » affiché dans le PDF.
@@ -381,10 +430,20 @@ app.get('/api/appointments', requireAuth, (req, res) => {
 });
 
 // POST new appointment (public)
-app.post('/api/appointments', (req, res) => {
-    const { client_name, phone, service_type, date_time } = req.body;
+app.post('/api/appointments', appointmentRateLimit, (req, res) => {
+    const { client_name, phone, service_type, date_time } = req.body || {};
+    const cleanName = typeof client_name === 'string' ? client_name.trim().slice(0, 120) : '';
+    const cleanPhone = typeof phone === 'string' ? phone.trim().slice(0, 30) : '';
+    const cleanService = typeof service_type === 'string' ? service_type.trim().slice(0, 120) : '';
+    const appointmentDate = new Date(date_time);
+    if (!cleanName || !cleanPhone || !cleanService || !date_time || Number.isNaN(appointmentDate.getTime())) {
+        return res.status(400).json({ error: 'Nom, téléphone, service et date valides sont requis.' });
+    }
+    if (appointmentDate.getTime() < Date.now() - 60_000) {
+        return res.status(400).json({ error: 'La date du rendez-vous doit être dans le futur.' });
+    }
     const sql = 'INSERT INTO appointments (client_name, phone, service_type, date_time) VALUES (?,?,?,?)';
-    const params = [client_name, phone, service_type, date_time];
+    const params = [cleanName, cleanPhone, cleanService, appointmentDate.toISOString()];
 
     db.run(sql, params, function (err) {
         if (err) res.status(400).json({ "error": err.message });
@@ -406,24 +465,30 @@ app.patch('/api/appointments/:id', requireAuth, (req, res) => {
 
 // --- PRESCRIPTIONS ---
 // POST upload prescription (public, rate-limité)
-app.post('/api/prescriptions', rateLimit(10), upload.single('image'), async (req, res) => {
+app.post('/api/prescriptions', prescriptionRateLimit, upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu.' });
     const { phone, client_name } = req.body;
-    if (!phone || !String(phone).trim()) return res.status(400).json({ error: 'Téléphone requis.' });
+    const cleanPhone = typeof phone === 'string' ? phone.trim().slice(0, 30) : '';
+    const cleanName = typeof client_name === 'string' ? client_name.trim().slice(0, 120) : '';
+    if (!cleanPhone) {
+        fs.unlink(req.file.path, () => { });
+        return res.status(400).json({ error: 'Téléphone requis.' });
+    }
 
-    let imageUrl;
+    let fileName;
     try {
-        // Chemin relatif : survit aux changements de domaine.
-        imageUrl = await saveUploadedImage(req.file, uploadDir);
+        // Normalisée par sharp puis stockée dans prescriptions/ — dossier
+        // jamais servi publiquement : accès via /api/prescriptions/:id/image.
+        fileName = await saveUploadedImage(req.file, prescriptionsDir);
     } catch (e) {
         console.error('Image processing failed:', e.message);
         return res.status(400).json({ error: `Image illisible — utilisez une photo ${FORMATS_LABEL}.` });
     }
 
     const sql = 'INSERT INTO prescriptions (client_name, phone, image_url) VALUES (?,?,?)';
-    db.run(sql, [client_name || 'Anonyme', String(phone).slice(0, 30), imageUrl], function (err) {
+    db.run(sql, [cleanName || 'Anonyme', cleanPhone, fileName], function (err) {
         if (err) return res.status(400).json({ "error": err.message });
-        res.json({ "message": "success", "imageUrl": imageUrl, "id": this.lastID });
+        res.json({ "message": "success", "id": this.lastID });
     });
 });
 
@@ -431,7 +496,24 @@ app.post('/api/prescriptions', rateLimit(10), upload.single('image'), async (req
 app.get('/api/prescriptions', requireAuth, (req, res) => {
     db.all("SELECT * FROM prescriptions ORDER BY created_at DESC", [], (err, rows) => {
         if (err) res.status(400).json({ "error": err.message });
-        else res.json({ "message": "success", "data": rows });
+        else res.json({ "message": "success", "data": rows.map((row) => ({
+            ...row,
+            image_url: `/api/prescriptions/${row.id}/image`,
+        })) });
+    });
+});
+
+// Une ordonnance est une donnée médicale : son fichier exige toujours un token admin.
+app.get('/api/prescriptions/:id/image', requireAuth, (req, res) => {
+    db.get('SELECT image_url FROM prescriptions WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Ordonnance introuvable.' });
+        const filename = path.basename(row.image_url);
+        const currentPath = path.join(prescriptionsDir, filename);
+        const legacyPath = path.join(uploadDir, filename);
+        const filePath = fs.existsSync(currentPath) ? currentPath : legacyPath;
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Fichier introuvable.' });
+        res.sendFile(filePath);
     });
 });
 
@@ -532,7 +614,8 @@ app.post('/api/upload', requireAuth, upload.single('image'), async (req, res) =>
     }
     try {
         // Chemin relatif : le front le résout sur son origine (assetUrl).
-        res.json({ imageUrl: await saveUploadedImage(req.file, uploadDir) });
+        const fileName = await saveUploadedImage(req.file, productsDir);
+        res.json({ imageUrl: `/uploads/products/${fileName}` });
     } catch (e) {
         console.error('Image processing failed:', e.message);
         res.status(400).json({ error: `Image illisible — utilisez une photo ${FORMATS_LABEL}.` });
@@ -571,8 +654,8 @@ app.get('/api/stats', requireAuth, (req, res) => {
 });
 
 // Admin Login — mot de passe via ADMIN_PASSWORD, token signé vérifié partout.
-app.post('/api/login', (req, res) => {
-    const { password } = req.body;
+app.post('/api/login', loginRateLimit, (req, res) => {
+    const { password } = req.body || {};
     if (password === ADMIN_PASSWORD) {
         res.json({ success: true, token: createToken() });
     } else {
