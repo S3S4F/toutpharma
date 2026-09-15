@@ -1,6 +1,6 @@
 # API ToutPharma — Express + SQLite
 # trixie : glibc ≥ 2.38 requise par les binaires précompilés de sqlite3 v6.
-FROM node:22-trixie-slim
+FROM node:26-trixie-slim
 
 WORKDIR /app
 ENV NODE_ENV=production
