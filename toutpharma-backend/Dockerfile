@@ -1,12 +1,16 @@
 # API ToutPharma — Express + SQLite
-FROM node:20-slim
+# trixie : glibc ≥ 2.38 requise par les binaires précompilés de sqlite3 v6.
+FROM node:22-trixie-slim
 
 WORKDIR /app
 ENV NODE_ENV=production
 
 # Dépendances d'abord (cache de layer)
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev \
+    # Les binaires natifs de sharp pour la plateforme du conteneur ne sont pas
+    # toujours résolus par npm ci depuis un lockfile généré sur macOS.
+    && npm install --no-save --include=optional sharp
 
 # Code
 COPY server.js ./
