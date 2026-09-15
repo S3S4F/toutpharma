@@ -72,7 +72,7 @@ jobs:
 
       - name: Métadonnées backend
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-backend
           tags: |
@@ -90,7 +90,7 @@ jobs:
 
       - name: Métadonnées front
         id: meta-front
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}-front
           tags: |
