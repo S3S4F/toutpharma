@@ -46,6 +46,8 @@ jobs:
           cache: npm
           cache-dependency-path: toutpharma-backend/package-lock.json
       - run: npm ci
+      # Binaires natifs sharp pour le runner Linux (lockfile généré sur macOS)
+      - run: npm install --no-save --include=optional sharp
       - run: node --check server.js && node --check lib/auth.js && node --check lib/orderPdf.js && node --check lib/images.js
       # Suite de tests d'intégration (node:test) : démarre le serveur et
       # vérifie uploads, confidentialité des ordonnances, prix, rate limits.

@@ -1,0 +1,38 @@
+# Mises à jour de dépendances automatiques (sécurité + fraîcheur).
+# Une PR par écosystème, chaque lundi — la CI valide avant tout merge.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /toutpharma
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      front-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /toutpharma-backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      backend-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /toutpharma
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /toutpharma-backend
+    schedule:
+      interval: monthly

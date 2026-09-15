@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ProductCard from '../components/ui/ProductCard';
+import Reveal from '../components/ui/Reveal';
 import { SlidersHorizontal, Loader } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { uniqueCategories } from '../utils/format';
@@ -27,11 +28,13 @@ export default function Equipment() {
     return (
         <div className="pt-8 pb-20">
             {/* Header */}
-            <div className="bg-gradient-to-br from-giphar-green to-giphar-green-dark py-16 mb-12">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-bold text-white mb-4">Équipements Médicaux</h1>
-                    <p className="text-green-100 max-w-2xl text-lg">
-                        Découvrez notre gamme complète d'équipements médicaux et consommables pour l'approvisionnement de votre pharmacie.
+            <div className="relative bg-gradient-to-br from-giphar-green to-giphar-green-dark py-16 mb-12 overflow-hidden">
+                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }} aria-hidden="true"></div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+                    <h1 className="text-4xl font-extrabold text-white mb-4 animate-fade-up">Équipements Médicaux</h1>
+                    <p className="text-green-100 max-w-2xl text-lg animate-fade-up" style={{ animationDelay: '100ms' }}>
+                        Matériel médical et consommables pour pharmacies, hôpitaux et cliniques.
+                        Ajoutez vos références, recevez votre devis sous 24h.
                     </p>
                 </div>
             </div>
@@ -75,8 +78,10 @@ export default function Equipment() {
                                     <div className="h-px flex-1 bg-slate-200"></div>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {items.map(product => (
-                                        <ProductCard key={product.id} product={product} />
+                                    {items.map((product, index) => (
+                                        <Reveal key={product.id} delay={(index % 4) * 90}>
+                                            <ProductCard product={product} />
+                                        </Reveal>
                                     ))}
                                 </div>
                             </div>
@@ -90,9 +95,11 @@ export default function Equipment() {
                                 {selectedCategory} <span className="text-slate-400 text-lg font-normal">({filteredProducts.length})</span>
                             </h2>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredProducts.map(product => (
-                                <ProductCard key={product.id} product={product} />
+                        <div key={selectedCategory} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filteredProducts.map((product, index) => (
+                                <div key={product.id} className="animate-scale-in" style={{ animationDelay: `${(index % 8) * 50}ms` }}>
+                                    <ProductCard product={product} />
+                                </div>
                             ))}
                         </div>
                     </div>

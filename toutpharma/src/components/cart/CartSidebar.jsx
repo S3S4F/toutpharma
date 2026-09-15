@@ -60,9 +60,9 @@ export default function CartSidebar() {
 
     return (
         <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-fade-in" onClick={handleClose} />
 
-            <div className="absolute inset-y-0 right-0 w-full max-w-sm flex flex-col bg-white shadow-2xl">
+            <div className="absolute inset-y-0 right-0 w-full max-w-sm flex flex-col bg-white shadow-2xl animate-slide-in-right">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">

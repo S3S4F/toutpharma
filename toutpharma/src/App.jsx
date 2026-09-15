@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
 import CategoryList from './components/home/CategoryList';
 import PopularProducts from './components/home/PopularProducts';
+import HowItWorks from './components/home/HowItWorks';
 import CartSidebar from './components/cart/CartSidebar';
 import Footer from './components/layout/Footer';
 import Equipment from './pages/Equipment';
@@ -56,48 +57,10 @@ const Home = () => {
         {products.length > 0 && <CategoryList categories={derivedCategories} />}
         <PopularProducts products={products.slice(0, 8)} />
       </div>
-      <AppDownloadSection />
+      <HowItWorks />
     </main>
   );
 };
-
-// App Download Section (extracted for reuse if needed, or just organization)
-const AppDownloadSection = () => (
-  <section className="bg-gradient-to-br from-green-50 to-orange-50 py-16">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <h2 className="text-3xl font-bold mb-4">Application Pro pour Pharmaciens</h2>
-          <p className="text-slate-600 mb-8 max-w-md">
-            Gérez vos approvisionnements en quelques clics. Notre application dédiée aux professionnels sera bientôt disponible pour faciliter vos commandes de stock.
-          </p>
-          <div className="flex gap-4">
-            <button className="bg-slate-900 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-colors opacity-75 cursor-not-allowed">
-              <span className="text-xs text-left">
-                <div>Télécharger sur</div>
-                <div className="text-lg font-bold">App Store</div>
-              </span>
-            </button>
-            <button className="bg-slate-900 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-colors">
-              <span className="text-xs text-left">
-                <div>Disponible sur</div>
-                <div className="text-lg font-bold">Google Play</div>
-              </span>
-            </button>
-          </div>
-        </div>
-        <div className="relative">
-          <img
-            src="https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&q=80&w=600"
-            alt="Mobile App"
-            className="rounded-3xl shadow-2xl mx-auto transform rotate-[-2deg] hover:rotate-0 transition-transform duration-500"
-          />
-          <div className="absolute top-10 -right-4 w-24 h-24 bg-giphar-orange rounded-full blur-2xl opacity-20 animate-pulse"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-);
 
 
 

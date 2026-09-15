@@ -147,6 +147,23 @@ les plateformes type **Openship / Coolify / Dokploy** : elles consomment le
 
 ---
 
+## 🛡️ Qualité & sécurité
+
+Processus de développement appliqué à chaque évolution :
+
+1. **Revue de code** avant fusion (dont une revue multi-agents « ultra » sur les gros changements)
+2. **Tests d'intégration** backend (node:test) : uploads, confidentialité des ordonnances,
+   prix côté serveur, numérotation concurrente, rate limits — **obligatoires en CI**
+3. **Lint + build front** obligatoires en CI ; images Docker construites uniquement si tout est vert
+4. **Dependabot** : mises à jour npm / GitHub Actions / Docker hebdomadaires
+5. Signalement de vulnérabilités : voir [SECURITY.md](SECURITY.md)
+
+Mesures en production : mots de passe/secrets forts **exigés au démarrage**, token HMAC,
+rate limits par endpoint (dont anti-bruteforce login), ordonnances servies uniquement
+authentifié, uploads re-encodés (sharp → WebP), SQL paramétré, prix jamais acceptés du
+client, en-têtes **CSP / X-Frame-Options / nosniff / Referrer-Policy / Permissions-Policy**,
+CORS fermé par défaut, conteneurs non-root, volumes de données isolés.
+
 ## 🗂️ Données & sauvegardes
 
 Toutes les données vivent dans **deux volumes Docker** :

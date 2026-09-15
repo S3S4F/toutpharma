@@ -75,7 +75,10 @@ export default function Navbar() {
                             <div className="relative">
                                 <ShoppingCart size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
                                 {totalItems > 0 && (
-                                    <span className="absolute -top-1.5 -right-1.5 bg-giphar-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                                    <span
+                                        key={totalItems}
+                                        className="absolute -top-1.5 -right-1.5 bg-giphar-orange text-white text-[10px] font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center border border-white animate-pop"
+                                    >
                                         {totalItems}
                                     </span>
                                 )}
