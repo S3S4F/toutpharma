@@ -165,6 +165,10 @@ function createTables() {
     // domaine. On ne stocke plus que le chemin relatif (/uploads/x.png).
     // Ancrée sur NOS origines uniquement : une image hébergée ailleurs
     // (https://cdn.exemple.com/uploads/x.jpg) ne doit pas être réécrite.
+    // Cas réel vu en production : PUBLIC_URL configuré par erreur avec une
+    // liste de domaines ("dom1,dom2,localhost/uploads/x.jpg") — toute valeur
+    // SANS schéma http(s) qui contient /uploads/ est du préfixe cassé, on la
+    // relativise aussi (les URLs externes légitimes commencent par http).
     const relativize = (table) => db.run(
         `UPDATE ${table}
             SET image_url = substr(image_url, instr(image_url, '/uploads/'))
@@ -172,7 +176,10 @@ function createTables() {
             AND (image_url LIKE 'http://localhost%'
               OR image_url LIKE 'https://localhost%'
               OR image_url LIKE 'http://127.0.0.1%'
-              OR image_url LIKE ? || '%')`,
+              OR image_url LIKE ? || '%'
+              OR (image_url NOT LIKE 'http%'
+                  AND image_url NOT LIKE '/uploads/%'
+                  AND image_url NOT LIKE '//%'))`,
         [PUBLIC_URL],
         (err) => { if (err) console.error(`Migration image_url ${table}:`, err.message); }
     );
