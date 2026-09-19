@@ -37,7 +37,7 @@ export default function ProductCard({ product }) {
                 <button
                     onClick={handleAdd}
                     aria-label={`Ajouter ${product.name} à la demande de devis`}
-                    className={`absolute bottom-3 right-3 p-2.5 rounded-xl shadow-md transition-all duration-300 cursor-pointer
+                    className={`absolute bottom-3 right-3 p-2.5 rounded-xl shadow-md transition-all duration-300 cursor-pointer active:scale-90
                         ${added
                             ? 'bg-giphar-green text-white animate-pop'
                             : 'bg-white text-giphar-green hover:bg-giphar-green hover:text-white sm:translate-y-14 sm:group-hover:translate-y-0'}`}

@@ -82,8 +82,8 @@ export default function CartSidebar() {
 
                 {/* Écran de confirmation après envoi */}
                 {confirmation ? (
-                    <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
-                        <CheckCircle2 size={48} className="text-green-500" />
+                    <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4 animate-fade-up">
+                        <CheckCircle2 size={48} className="text-green-500 animate-pop" style={{ animationDelay: '150ms' }} />
                         <div>
                             <p className="font-bold text-slate-800 text-lg">Commande envoyée !</p>
                             <p className="text-sm text-slate-500 mt-1">
@@ -127,8 +127,12 @@ export default function CartSidebar() {
                                     <p className="text-sm">Aucun produit ajouté</p>
                                 </div>
                             ) : (
-                                cart.map(item => (
-                                    <div key={item.id} className="flex gap-3 py-2 border-b border-gray-50">
+                                cart.map((item, index) => (
+                                    <div
+                                        key={item.id}
+                                        className="flex gap-3 py-2 border-b border-gray-50 animate-fade-up"
+                                        style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
+                                    >
                                         <div className="w-14 h-14 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
                                             <img
                                                 src={assetUrl(item.image_url || item.image)}
@@ -196,7 +200,7 @@ export default function CartSidebar() {
                                 <button
                                     onClick={handleSend}
                                     disabled={!phone.trim() || sending}
-                                    className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                                    className="w-full bg-green-500 hover:bg-green-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
                                 >
                                     {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
                                     {sending ? 'Envoi en cours...' : 'Envoyer la commande'}

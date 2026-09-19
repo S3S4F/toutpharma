@@ -27,7 +27,7 @@ export default function Navbar() {
                 <div className="flex justify-between items-center h-20 gap-8">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2 flex-shrink-0 group">
-                        <div className="w-10 h-10 bg-giphar-green-light rounded-tl-xl rounded-br-xl flex items-center justify-center text-white font-bold text-2xl group-hover:bg-giphar-green transition-colors">
+                        <div className="w-10 h-10 bg-giphar-green-light rounded-tl-xl rounded-br-xl flex items-center justify-center text-white font-bold text-2xl group-hover:bg-giphar-green group-hover:rotate-[10deg] transition-all duration-300">
                             +
                         </div>
                         <div className="flex flex-col">
@@ -70,7 +70,7 @@ export default function Navbar() {
                         {/* Cart */}
                         <button
                             onClick={() => setIsOpen(true)}
-                            className="relative flex flex-col items-center text-gray-500 hover:text-giphar-green transition-colors group"
+                            className="relative flex flex-col items-center text-gray-500 hover:text-giphar-green active:scale-90 transition-all group cursor-pointer"
                         >
                             <div className="relative">
                                 <ShoppingCart size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
@@ -97,16 +97,16 @@ export default function Navbar() {
             <div className="border-t border-gray-50 hidden md:block">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-8 text-sm font-medium h-12 text-gray-600">
-                        <Link to="/equipements" className="hover:text-giphar-green transition-colors flex items-center gap-1">
+                        <Link to="/equipements" className="nav-link hover:text-giphar-green transition-colors flex items-center gap-1">
                             Matériel Médical <ChevronDown size={14} />
                         </Link>
-                        <Link to="/services" className="hover:text-giphar-green transition-colors">
+                        <Link to="/services" className="nav-link hover:text-giphar-green transition-colors">
                             Services & Rendez-vous
                         </Link>
-                        <Link to="/livraison" className="hover:text-giphar-green transition-colors">
+                        <Link to="/livraison" className="nav-link hover:text-giphar-green transition-colors">
                             Livraison 24h
                         </Link>
-                        <Link to="/ordonnance" className="text-giphar-orange font-bold hover:text-giphar-orange-hover transition-colors">
+                        <Link to="/ordonnance" className="nav-link text-giphar-orange font-bold hover:text-giphar-orange-hover transition-colors">
                             Envoyer Ordonnance
                         </Link>
                     </div>

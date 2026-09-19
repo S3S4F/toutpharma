@@ -29,8 +29,8 @@ export default function AdminHome() {
                 <p className="text-slate-500">Bienvenue sur votre espace d'administration.</p>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Stats Grid — fondu d'apparition des cartes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 [&>*]:animate-fade-up">
                 <StatCard
                     title="Commandes à traiter"
                     value={stats.orders_pending}

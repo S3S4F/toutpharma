@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
 import CategoryList from './components/home/CategoryList';
@@ -64,6 +64,45 @@ const Home = () => {
 
 
 
+// Fondu léger à chaque changement de page publique. Les pages admin gardent
+// une clé stable pour ne pas remonter la sidebar à chaque navigation interne.
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+  return (
+    <div key={isAdmin ? 'admin' : location.pathname} className={isAdmin ? undefined : 'animate-fade-in'}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/equipements" element={<Equipment />} />
+        <Route path="/livraison" element={<Delivery />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/ordonnance" element={<Prescription />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<Login />} />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<AdminHome />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/:id/edit" element={<ProductForm />} />
+          <Route path="appointments" element={<AdminAppointments />} />
+          <Route path="prescriptions" element={<AdminPrescriptions />} />
+          <Route path="settings" element={<AdminSettings />} />
+        </Route>
+
+      </Routes>
+    </div>
+  );
+};
+
 function App() {
   return (
     <CartProvider>
@@ -73,34 +112,7 @@ function App() {
           <CartSidebar />
 
           <div className="flex-grow">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/equipements" element={<Equipment />} />
-              <Route path="/livraison" element={<Delivery />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/ordonnance" element={<Prescription />} />
-
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<Login />} />
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="dashboard" element={<AdminHome />} />
-                <Route path="orders" element={<AdminOrders />} />
-                <Route path="products" element={<AdminProducts />} />
-                <Route path="products/new" element={<ProductForm />} />
-                <Route path="products/:id/edit" element={<ProductForm />} />
-                <Route path="appointments" element={<AdminAppointments />} />
-                <Route path="prescriptions" element={<AdminPrescriptions />} />
-                <Route path="settings" element={<AdminSettings />} />
-              </Route>
-
-            </Routes>
+            <AnimatedRoutes />
           </div>
 
           <Footer />

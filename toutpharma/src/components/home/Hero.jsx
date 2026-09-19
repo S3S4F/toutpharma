@@ -50,14 +50,14 @@ export default function Hero() {
                             <div className="flex flex-col sm:flex-row gap-4 animate-fade-up" style={{ animationDelay: '270ms' }}>
                                 <Link
                                     to="/equipements"
-                                    className="group bg-giphar-orange hover:bg-giphar-orange-hover text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-lift transition-all duration-300 transform hover:-translate-y-1 text-center inline-flex items-center justify-center gap-2"
+                                    className="group bg-giphar-orange hover:bg-giphar-orange-hover text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-lift transition-all duration-300 transform hover:-translate-y-1 active:scale-95 text-center inline-flex items-center justify-center gap-2"
                                 >
                                     Demander un devis
                                     <ArrowRight size={20} className="transition-transform duration-300 group-hover:translate-x-1" />
                                 </Link>
                                 <Link
                                     to="/services"
-                                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-full font-bold text-lg backdrop-blur-sm transition-all duration-300 text-center"
+                                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-full font-bold text-lg backdrop-blur-sm transition-all duration-300 active:scale-95 text-center"
                                 >
                                     Nos services
                                 </Link>
