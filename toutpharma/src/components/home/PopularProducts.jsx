@@ -13,7 +13,7 @@ export default function PopularProducts({ products }) {
                         Produits populaires
                         <span className="block w-12 h-1 bg-giphar-orange rounded-full mt-2" aria-hidden="true"></span>
                     </h2>
-                    <p className="text-slate-500">Les références les plus demandées par les pharmacies</p>
+                    <p className="text-slate-500">Les équipements les plus demandés par les pharmacies et cliniques</p>
                 </div>
                 <Link
                     to="/equipements"

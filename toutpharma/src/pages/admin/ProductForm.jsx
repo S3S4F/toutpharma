@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload, Loader } from 'lucide-react';
 import { api, assetUrl } from '../../lib/api';
+import { CANONICAL_CATEGORIES } from '../../lib/categories';
 
 // Formulaire produit : création (/admin/products/new) et édition
 // (/admin/products/:id/edit) partagent le même composant.
@@ -39,14 +40,9 @@ export default function ProductForm() {
         }).catch((e) => console.error('Error loading product:', e));
     }, [id, isEdit]);
 
-    const categories = [
-        "Matériel Médical",
-        "Consommables",
-        "Diagnostic",
-        "Mobilier",
-        "Orthopédie",
-        "Autre"
-    ];
+    // Catégories canoniques de l'équipement de pharmacie (suggestions —
+    // la saisie reste libre, les icônes du site s'adaptent par mots-clés).
+    const categories = CANONICAL_CATEGORIES.map((c) => c.name);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];

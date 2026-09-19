@@ -5,9 +5,9 @@ import livreurImage from '../../assets/images/imagelivreur.png';
 import ActionBar from '../layout/ActionBar';
 
 const stats = [
-    { icon: Building2, value: '500+', label: 'Pharmacies équipées' },
-    { icon: Truck, value: '24h', label: 'Livraison à Dakar' },
-    { icon: ShieldCheck, value: '100%', label: 'Produits certifiés' },
+    { icon: Building2, value: '500+', label: 'Pharmacies & cliniques équipées' },
+    { icon: Truck, value: '24h', label: 'Devis & livraison à Dakar' },
+    { icon: ShieldCheck, value: '100%', label: 'Équipements certifiés' },
 ];
 
 export default function Hero() {
@@ -30,20 +30,21 @@ export default function Hero() {
                             <div>
                                 <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-giphar-green-light/15 border border-giphar-green-light/30 rounded-full text-giphar-green-light font-bold text-sm mb-6 tracking-wide uppercase animate-fade-up">
                                     <span className="w-2 h-2 rounded-full bg-giphar-green-light animate-pulse"></span>
-                                    Grossiste Pharmaceutique N°1
+                                    Équipement & matériel de pharmacie
                                 </span>
                                 <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight mb-6 animate-fade-up" style={{ animationDelay: '90ms' }}>
-                                    Votre partenaire santé <br />
+                                    Équipez votre pharmacie <br />
                                     <span className="text-giphar-green-light relative inline-block">
-                                        proche de vous
+                                        en toute simplicité
                                         <svg className="absolute w-full h-3 -bottom-2 left-0 text-giphar-green-light opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                                             <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2" fill="none" />
                                         </svg>
                                     </span>
                                 </h1>
                                 <p className="text-lg text-green-50/90 max-w-xl leading-relaxed animate-fade-up" style={{ animationDelay: '180ms' }}>
-                                    ToutPharma équipe pharmacies, hôpitaux et cliniques au Sénégal :
-                                    matériel médical, consommables et équipements — devis personnalisé sous 24h.
+                                    Matériel de diagnostic, consommables, mobilier médical et agencement
+                                    d'officine. Pharmacies, hôpitaux et cliniques : constituez votre panier,
+                                    recevez votre devis sous 24h — livraison partout au Sénégal.
                                 </p>
                             </div>
 
@@ -52,14 +53,14 @@ export default function Hero() {
                                     to="/equipements"
                                     className="group bg-giphar-orange hover:bg-giphar-orange-hover text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-lift transition-all duration-300 transform hover:-translate-y-1 active:scale-95 text-center inline-flex items-center justify-center gap-2"
                                 >
-                                    Demander un devis
+                                    Voir le catalogue
                                     <ArrowRight size={20} className="transition-transform duration-300 group-hover:translate-x-1" />
                                 </Link>
                                 <Link
-                                    to="/services"
+                                    to="/livraison"
                                     className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-full font-bold text-lg backdrop-blur-sm transition-all duration-300 active:scale-95 text-center"
                                 >
-                                    Nos services
+                                    Livraison 24h
                                 </Link>
                             </div>
 

@@ -45,7 +45,7 @@ export default function Navbar() {
                         <div className="relative w-full">
                             <input
                                 type="text"
-                                placeholder="Rechercher un produit, un médicament..."
+                                placeholder="Rechercher un équipement, un consommable..."
                                 className="w-full pl-5 pr-12 py-3 rounded-full border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-giphar-green/20 focus:border-giphar-green outline-none transition-all placeholder:text-gray-400"
                             />
                             <button className="absolute right-2 top-1.5 p-1.5 bg-giphar-green text-white rounded-full hover:bg-giphar-green-dark transition-colors">
@@ -98,7 +98,7 @@ export default function Navbar() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-8 text-sm font-medium h-12 text-gray-600">
                         <Link to="/equipements" className="nav-link hover:text-giphar-green transition-colors flex items-center gap-1">
-                            Matériel Médical <ChevronDown size={14} />
+                            Catalogue équipements <ChevronDown size={14} />
                         </Link>
                         <Link to="/services" className="nav-link hover:text-giphar-green transition-colors">
                             Services & Rendez-vous

@@ -185,6 +185,14 @@ function createTables() {
     );
     relativize('products');
     relativize('prescriptions');
+
+    // Migration : fusionne les catégories en double créées par des espaces
+    // parasites (« Dispositif  » vs « Dispositif ») et nettoie les noms.
+    db.run(
+        `UPDATE products SET name = TRIM(name), category = TRIM(category)
+          WHERE name <> TRIM(name) OR category <> TRIM(category)`,
+        (err) => { if (err) console.error('Migration TRIM products:', err.message); }
+    );
     }); // fin db.serialize
 }
 
@@ -252,23 +260,36 @@ app.get('/api/products', (req, res) => {
     });
 });
 
+// Assainit les champs texte d'un produit : les espaces parasites créaient des
+// catégories en double (« Dispositif » ≠ « Dispositif  ») dans les filtres.
+const cleanProductFields = (body) => {
+    const trim = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    return {
+        name: trim(body.name, 200),
+        category: trim(body.category, 100),
+        description: trim(body.description, 2000),
+        image_url: trim(body.image_url, 500),
+        price: body.price === null || body.price === undefined || body.price === '' ? null : parseFloat(body.price) || null,
+    };
+};
+
 // POST new product (admin)
 app.post('/api/products', requireAuth, (req, res) => {
-    const { name, description, category, image_url, price } = req.body;
+    const p = cleanProductFields(req.body || {});
+    if (!p.name || !p.category) return res.status(400).json({ error: 'Nom et catégorie requis.' });
     const sql = 'INSERT INTO products (name, description, category, image_url, price) VALUES (?,?,?,?,?)';
-    const params = [name, description, category, image_url, price];
-
-    db.run(sql, params, function (err) {
+    db.run(sql, [p.name, p.description, p.category, p.image_url, p.price], function (err) {
         if (err) res.status(400).json({ "error": err.message });
-        else res.json({ "message": "success", "data": { id: this.lastID, ...req.body } });
+        else res.json({ "message": "success", "data": { id: this.lastID, ...p } });
     });
 });
 
 // PUT update product (admin)
 app.put('/api/products/:id', requireAuth, (req, res) => {
-    const { name, description, category, image_url, price } = req.body;
+    const p = cleanProductFields(req.body || {});
+    if (!p.name || !p.category) return res.status(400).json({ error: 'Nom et catégorie requis.' });
     const sql = `UPDATE products SET name = ?, description = ?, category = ?, image_url = ?, price = ? WHERE id = ?`;
-    db.run(sql, [name, description, category, image_url, price, req.params.id], function (err) {
+    db.run(sql, [p.name, p.description, p.category, p.image_url, p.price, req.params.id], function (err) {
         if (err) res.status(400).json({ "error": err.message });
         else res.json({ "message": "success", changes: this.changes });
     });
