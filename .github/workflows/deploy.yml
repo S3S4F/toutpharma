@@ -44,7 +44,7 @@ jobs:
           exit $fail
 
       - name: Préparer le dossier de déploiement
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           port: ${{ secrets.VPS_PORT }}
@@ -63,7 +63,7 @@ jobs:
           target: ${{ env.DEPLOY_PATH }}
 
       - name: Déploiement SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           port: ${{ secrets.VPS_PORT }}
