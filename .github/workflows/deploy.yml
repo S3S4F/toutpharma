@@ -27,7 +27,7 @@ jobs:
     # En cas de déclenchement auto, ne déployer que si la CI a réussi.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Échoue ICI avec un message clair plutôt qu'en crash-loop sur le VPS :
       # le backend refuse de démarrer en production avec des secrets faibles.
