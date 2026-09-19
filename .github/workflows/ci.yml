@@ -54,7 +54,7 @@ jobs:
       - run: npm test
 
   docker:
-    name: Images Docker → GHCR
+    name: Images Docker → Docker Hub + GHCR
     needs: [front, backend]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
@@ -69,12 +69,19 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Docker Hub : le registre que le VPS consomme au déploiement.
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Métadonnées backend
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-backend
+          images: |
+            ${{ secrets.DOCKERHUB_USER }}/toutpharma-backend
+            ghcr.io/${{ github.repository }}-backend
           tags: |
             type=raw,value=latest
             type=sha
@@ -92,7 +99,9 @@ jobs:
         id: meta-front
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-front
+          images: |
+            ${{ secrets.DOCKERHUB_USER }}/toutpharma-front
+            ghcr.io/${{ github.repository }}-front
           tags: |
             type=raw,value=latest
             type=sha

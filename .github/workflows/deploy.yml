@@ -1,15 +1,14 @@
-# Déploiement ToutPharma : se connecte au serveur en SSH et relance la stack
-# avec les dernières images GHCR.
+# Déploiement ToutPharma : se connecte au VPS en SSH et relance la stack
+# avec les dernières images Docker Hub publiées par la CI.
 #
-# Secrets à créer dans GitHub (Settings → Secrets and variables → Actions) :
-#   DEPLOY_HOST     — IP ou domaine du serveur
-#   DEPLOY_USER     — utilisateur SSH
-#   DEPLOY_SSH_KEY  — clé privée SSH (l'utilisateur doit pouvoir lancer docker)
-#   DEPLOY_PATH     — dossier sur le serveur contenant docker-compose.prod.yml
-#                     et le .env (ex. /opt/toutpharma)
+# Secrets utilisés (Settings → Secrets and variables → Actions) :
+#   VPS_HOST / VPS_PORT / VPS_USERNAME / VPS_SSH_KEY — accès SSH au serveur
+#   DOCKERHUB_USER / DOCKERHUB_PASSWORD              — registre des images
+#   FRONTEND_URL                                     — URL publique du site
+#   ADMIN_PASSWORD (≥ 12 car.) / ADMIN_TOKEN_SECRET (≥ 32 car.)
 #
-# Déclenchement : manuel (onglet Actions → Deploy → Run workflow),
-# ou automatique après une CI verte sur main/master.
+# Déclenchement : automatique après une CI verte sur master,
+# ou manuel (onglet Actions → Deploy → Run workflow).
 name: Deploy
 
 on:
@@ -17,7 +16,10 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main, master]
+    branches: [master, main]
+
+env:
+  DEPLOY_PATH: /home/${{ secrets.VPS_USERNAME }}/toutpharma
 
 jobs:
   deploy:
@@ -25,15 +27,75 @@ jobs:
     # En cas de déclenchement auto, ne déployer que si la CI a réussi.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
+      - uses: actions/checkout@v4
+
+      # Échoue ICI avec un message clair plutôt qu'en crash-loop sur le VPS :
+      # le backend refuse de démarrer en production avec des secrets faibles.
+      - name: Vérifier les secrets de production
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_TOKEN_SECRET: ${{ secrets.ADMIN_TOKEN_SECRET }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          fail=0
+          [ -n "$VPS_HOST" ] || { echo "::error::Secret VPS_HOST manquant."; fail=1; }
+          [ "${#ADMIN_PASSWORD}" -ge 12 ] || { echo "::error::ADMIN_PASSWORD doit faire au moins 12 caractères (le backend refusera de démarrer). Mettez à jour le secret GitHub."; fail=1; }
+          [ "${#ADMIN_TOKEN_SECRET}" -ge 32 ] || { echo "::error::ADMIN_TOKEN_SECRET doit faire au moins 32 caractères (openssl rand -hex 32). Mettez à jour le secret GitHub."; fail=1; }
+          exit $fail
+
+      - name: Préparer le dossier de déploiement
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: mkdir -p "${{ env.DEPLOY_PATH }}"
+
+      - name: Copier docker-compose.prod.yml sur le VPS
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: docker-compose.prod.yml
+          target: ${{ env.DEPLOY_PATH }}
+
       - name: Déploiement SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ env.DEPLOY_PATH }}"
+
+            # PUBLIC_URL doit être UNE seule URL avec schéma. Le secret
+            # FRONTEND_URL a déjà contenu une liste de domaines séparés par
+            # des virgules (source des images cassées) : on assainit —
+            # premier élément + https:// si le schéma manque.
+            RAW_URL='${{ secrets.FRONTEND_URL }}'
+            PUBLIC_URL="${RAW_URL%%,*}"
+            case "$PUBLIC_URL" in
+              http://*|https://*) ;;
+              *) PUBLIC_URL="https://${PUBLIC_URL}" ;;
+            esac
+            echo "PUBLIC_URL effectif : ${PUBLIC_URL}"
+
+            cat > .env <<ENVEOF
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            ADMIN_TOKEN_SECRET=${{ secrets.ADMIN_TOKEN_SECRET }}
+            PUBLIC_URL=${PUBLIC_URL}
+            FRONT_PORT=8101
+            IMAGE_PREFIX=${{ secrets.DOCKERHUB_USER }}/toutpharma
+            TAG=latest
+            ENVEOF
+            chmod 600 .env
+
+            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
