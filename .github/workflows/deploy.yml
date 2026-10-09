@@ -92,6 +92,15 @@ jobs:
             FRONT_PORT=8101
             IMAGE_PREFIX=${{ secrets.DOCKERHUB_USER }}/toutpharma
             TAG=latest
+            # Optionnels (vides = fonctionnalité désactivée)
+            ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }}
+            WHATSAPP_CLOUD_TOKEN=${{ secrets.WHATSAPP_CLOUD_TOKEN }}
+            WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+            WHATSAPP_NOTIFY_TO=${{ secrets.WHATSAPP_NOTIFY_TO }}
+            WHATSAPP_TEMPLATE_NAME=${{ secrets.WHATSAPP_TEMPLATE_NAME }}
+            WHATSAPP_GATEWAY_URL=${{ secrets.WHATSAPP_GATEWAY_URL }}
+            WHATSAPP_GATEWAY_KEY=${{ secrets.WHATSAPP_GATEWAY_KEY }}
+            WHATSAPP_GATEWAY_SESSION=${{ secrets.WHATSAPP_GATEWAY_SESSION }}
             ENVEOF
             chmod 600 .env
 

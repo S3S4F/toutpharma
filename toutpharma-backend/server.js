@@ -8,6 +8,8 @@ const fs = require('fs');
 const { createToken, requireAuth } = require('./lib/auth');
 const { generateOrderPdf } = require('./lib/orderPdf');
 const { saveUploadedImage, ACCEPTED_MIMES, FORMATS_LABEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } = require('./lib/images');
+const { verifyTotp } = require('./lib/totp');
+const { notifyNewOrder } = require('./lib/whatsappNotify');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -402,6 +404,17 @@ app.post('/api/orders', orderRateLimit, async (req, res) => {
                 if (pdfUrl) msg += `\nBon de commande PDF :\n${pdfUrl}\n`;
                 msg += `\nMerci de confirmer la disponibilité et les délais.`;
 
+                // Notification WhatsApp automatique à la pharmacie (optionnelle,
+                // API officielle Meta) — fire-and-forget, ne bloque jamais la
+                // réponse au client.
+                notifyNewOrder({
+                    orderNumber,
+                    clientName: cleanName,
+                    phone: cleanPhone,
+                    totalQty,
+                    pdfUrl,
+                });
+
                 res.json({
                     message: 'success',
                     orderNumber,
@@ -681,14 +694,32 @@ app.get('/api/stats', requireAuth, (req, res) => {
     });
 });
 
-// Admin Login — mot de passe via ADMIN_PASSWORD, token signé vérifié partout.
+// Admin Login — mot de passe via ADMIN_PASSWORD (comparaison à temps
+// constant), token signé vérifié partout. 2FA TOTP optionnelle : définir
+// ADMIN_TOTP_SECRET (npm run totp-setup) pour exiger en plus un code
+// Google Authenticator à 6 chiffres.
 app.post('/api/login', loginRateLimit, (req, res) => {
-    const { password } = req.body || {};
-    if (password === ADMIN_PASSWORD) {
-        res.json({ success: true, token: createToken() });
-    } else {
-        res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
+    const { password, otp } = req.body || {};
+    const expected = Buffer.from(String(ADMIN_PASSWORD));
+    const given = Buffer.from(String(password || ''));
+    const passwordOk = expected.length === given.length
+        && require('crypto').timingSafeEqual(expected, given);
+
+    if (!passwordOk) {
+        return res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
     }
+
+    const totpSecret = process.env.ADMIN_TOTP_SECRET;
+    if (totpSecret) {
+        if (!otp) {
+            return res.status(401).json({ success: false, otpRequired: true, message: 'Code de vérification requis' });
+        }
+        if (!verifyTotp(totpSecret, otp)) {
+            return res.status(401).json({ success: false, otpRequired: true, message: 'Code de vérification invalide' });
+        }
+    }
+
+    res.json({ success: true, token: createToken() });
 });
 
 // Gestion d'erreur (multer : taille / type de fichier)

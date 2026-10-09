@@ -13,8 +13,9 @@ Nous accusons réception sous 72 h et corrigeons en priorité.
 
 | Domaine | Mesure |
 |---|---|
-| Authentification admin | Token HMAC signé + expiration 7 j ; mot de passe ≥ 12 caractères et secret ≥ 32 caractères **exigés en production** (démarrage refusé sinon) |
-| Anti-bruteforce | Rate limit connexion : 5 tentatives / 15 min / IP |
+| Authentification admin | Token HMAC signé + expiration 7 j ; comparaison de mot de passe à temps constant ; mot de passe ≥ 12 caractères et secret ≥ 32 caractères **exigés en production** (démarrage refusé sinon) |
+| 2FA (optionnelle, recommandée) | TOTP RFC 6238 (Google Authenticator) sans service tiers — activer avec `ADMIN_TOTP_SECRET` (`npm run totp-setup`) |
+| Anti-bruteforce | Rate limit connexion : 5 tentatives / 15 min / IP (codes 2FA inclus) |
 | Données de santé | Photos d'ordonnances stockées hors du statique public, servies uniquement via endpoint authentifié |
 | Uploads | Formats whitelist (JPG/PNG/WebP), 15 Mo max, re-encodage systématique WebP par sharp (le décodage vaut validation), garde anti-bombe de décompression (40 MP), noms UUID |
 | Injections | Requêtes SQL 100 % paramétrées ; validation/troncature des entrées ; prix jamais acceptés du client |

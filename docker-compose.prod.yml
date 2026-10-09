@@ -11,6 +11,16 @@ services:
       ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?Définir ADMIN_TOKEN_SECRET dans .env}
       PUBLIC_URL: ${PUBLIC_URL:?Définir PUBLIC_URL dans .env (ex. https://toutpharma.sn)}
       DB_PATH: /app/data/database.sqlite
+      # 2FA admin (optionnelle) — générer avec : npm run totp-setup
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET:-}
+      # Notification WhatsApp de commande (optionnelle, API officielle Meta)
+      WHATSAPP_CLOUD_TOKEN: ${WHATSAPP_CLOUD_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_NOTIFY_TO: ${WHATSAPP_NOTIFY_TO:-}
+      WHATSAPP_TEMPLATE_NAME: ${WHATSAPP_TEMPLATE_NAME:-}
+      WHATSAPP_GATEWAY_URL: ${WHATSAPP_GATEWAY_URL:-}
+      WHATSAPP_GATEWAY_KEY: ${WHATSAPP_GATEWAY_KEY:-}
+      WHATSAPP_GATEWAY_SESSION: ${WHATSAPP_GATEWAY_SESSION:-}
     volumes:
       - toutpharma-data:/app/data
       - toutpharma-uploads:/app/uploads

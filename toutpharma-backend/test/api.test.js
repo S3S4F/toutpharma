@@ -5,6 +5,10 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
+const { generateSecret, currentCode } = require('../lib/totp');
+
+// 2FA activée dans l'environnement de test : le login doit exiger le code.
+const TEST_TOTP_SECRET = generateSecret();
 
 let serverProcess;
 let baseUrl;
@@ -44,6 +48,7 @@ before(async () => {
             UPLOAD_DIR: path.join(temporaryDirectory, 'uploads'),
             ADMIN_PASSWORD: 'correct-horse-battery-staple',
             ADMIN_TOKEN_SECRET: 'test-secret-with-at-least-thirty-two-characters',
+            ADMIN_TOTP_SECRET: TEST_TOTP_SECRET,
         },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -61,7 +66,7 @@ before(async () => {
     const login = await requestJson('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: 'correct-horse-battery-staple' }),
+        body: JSON.stringify({ password: 'correct-horse-battery-staple', otp: currentCode(TEST_TOTP_SECRET) }),
     });
     assert.equal(login.response.status, 200, serverOutput);
     token = login.data.token;
@@ -155,6 +160,25 @@ test('des commandes simultanées reçoivent des numéros uniques', async () => {
     assert.equal(responses[0].response.status, 200);
     assert.equal(responses[1].response.status, 200);
     assert.notEqual(responses[0].data.orderNumber, responses[1].data.orderNumber);
+});
+
+test('la 2FA TOTP est exigée quand elle est configurée', async () => {
+    const body = (extra) => ({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'correct-horse-battery-staple', ...extra }),
+    });
+    // Mot de passe correct mais pas de code → refus explicite otpRequired.
+    const without = await requestJson('/api/login', body({}));
+    assert.equal(without.response.status, 401);
+    assert.equal(without.data.otpRequired, true);
+    // Code faux → refus.
+    const wrong = await requestJson('/api/login', body({ otp: '000000' }));
+    assert.equal(wrong.response.status, 401);
+    // Code valide → token délivré.
+    const ok = await requestJson('/api/login', body({ otp: currentCode(TEST_TOTP_SECRET) }));
+    assert.equal(ok.response.status, 200);
+    assert.ok(ok.data.token);
 });
 
 test('bloque les tentatives répétées de connexion', async () => {

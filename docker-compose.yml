@@ -11,6 +11,14 @@ services:
       # messages WhatsApp (les images sont stockées en chemins relatifs).
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
       DB_PATH: /app/data/database.sqlite
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET:-}
+      WHATSAPP_CLOUD_TOKEN: ${WHATSAPP_CLOUD_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_NOTIFY_TO: ${WHATSAPP_NOTIFY_TO:-}
+      WHATSAPP_TEMPLATE_NAME: ${WHATSAPP_TEMPLATE_NAME:-}
+      WHATSAPP_GATEWAY_URL: ${WHATSAPP_GATEWAY_URL:-}
+      WHATSAPP_GATEWAY_KEY: ${WHATSAPP_GATEWAY_KEY:-}
+      WHATSAPP_GATEWAY_SESSION: ${WHATSAPP_GATEWAY_SESSION:-}
     volumes:
       - toutpharma-data:/app/data
       - toutpharma-uploads:/app/uploads

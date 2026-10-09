@@ -175,10 +175,23 @@ Commandes de sauvegarde prêtes à l'emploi dans [DEPLOIEMENT.md](DEPLOIEMENT.md
 
 ---
 
+## 💬 Notification WhatsApp automatique (optionnelle)
+
+À chaque commande, la pharmacie peut recevoir un WhatsApp automatiquement
+(en plus du message wa.me envoyé par le client). Deux fournisseurs, au choix,
+par simples variables d'environnement (vides = désactivé) :
+
+| Option | Variables | À savoir |
+|---|---|---|
+| **API officielle Meta Cloud** | `WHATSAPP_CLOUD_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_NOTIFY_TO` (+ `WHATSAPP_TEMPLATE_NAME`) | Zéro risque de ban ; nécessite un compte Meta Business |
+| **Passerelle [OpenWA](https://github.com/rmyndharis/OpenWA) auto-hébergée** | `WHATSAPP_GATEWAY_URL`, `WHATSAPP_GATEWAY_KEY`, `WHATSAPP_GATEWAY_SESSION`, `WHATSAPP_NOTIFY_TO` | **Sans Meta** ; ⚠️ clients non officiels → risque de ban du numéro **émetteur** : utiliser un numéro secondaire dédié, jamais le numéro principal |
+
+L'échec d'une notification ne bloque jamais la commande (déjà persistée en base).
+
 ## 🧭 Feuille de route
 
-- [ ] **WhatsApp Business Cloud API** : réception automatique du PDF en pièce jointe
-  (sans action du client) + confirmation au client
+- [x] **Notification WhatsApp automatique** à la pharmacie (Meta Cloud ou OpenWA)
+- [x] **2FA admin (TOTP)** optionnelle — `npm run totp-setup`
 - [ ] Bouton « **Recommander** » : rejouer une commande précédente en 1 clic
 - [ ] Fiches produit enrichies : référence fabricant, unité de vente, fiche technique PDF
 - [ ] **Devis retour** : générer le devis chiffré en PDF depuis l'admin

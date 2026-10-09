@@ -80,7 +80,7 @@ export const api = {
   // Crée la commande : persiste en base, génère le PDF serveur et renvoie
   // { orderNumber, pdfUrl, whatsappUrl }.
   createOrder: (body) => sendJson("/api/orders", body),
-  login: (password) => sendJson("/api/login", { password }).then((r) => r.json()),
+  login: (password, otp) => sendJson("/api/login", { password, otp }).then((r) => r.json()),
 
   // Écritures admin → renvoient la Response brute (l'appelant inspecte res.ok).
   createProduct: (body) => sendJson("/api/products", body, "POST", true),
