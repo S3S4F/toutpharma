@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#004b38"/>
-  <path d="M26 14h12v12h12v12H38v12H26V38H14V26h12z" fill="#96c11f"/>
+  <!-- Tuile du logo ToutPharma : vert citron, coins arrondis haut-gauche et
+       bas-droit (comme la navbar), croix de pharmacie blanche. -->
+  <path d="M24 1h39v39q0 23-23 23H1V24Q1 1 24 1Z" fill="#96c11f"/>
+  <path d="M26 14h12v12h12v12H38v12H26V38H14V26h12z" fill="#ffffff"/>
 </svg>
