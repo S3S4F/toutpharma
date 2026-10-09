@@ -77,7 +77,7 @@ jobs:
 
       - name: Métadonnées backend
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ secrets.DOCKERHUB_USER }}/toutpharma-backend
@@ -97,7 +97,7 @@ jobs:
 
       - name: Métadonnées front
         id: meta-front
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ secrets.DOCKERHUB_USER }}/toutpharma-front
