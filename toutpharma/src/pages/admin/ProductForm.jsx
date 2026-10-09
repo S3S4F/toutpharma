@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Upload, Loader } from 'lucide-react';
+import { ArrowLeft, Upload, Loader, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { api, assetUrl } from '../../lib/api';
 import { CANONICAL_CATEGORIES } from '../../lib/categories';
 
@@ -20,6 +20,10 @@ export default function ProductForm() {
         image_url: ''
     });
     const [preview, setPreview] = useState(null);
+    // Infos du fichier choisi (nom, poids) affichées sous le grand aperçu,
+    // et erreur de sélection (format/poids) signalée AVANT l'envoi.
+    const [fileInfo, setFileInfo] = useState(null);
+    const [imageError, setImageError] = useState('');
 
     // En édition : pré-remplir depuis le produit existant.
     useEffect(() => {
@@ -44,12 +48,30 @@ export default function ProductForm() {
     // la saisie reste libre, les icônes du site s'adaptent par mots-clés).
     const categories = CANONICAL_CATEGORIES.map((c) => c.name);
 
+    const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_MO = 15;
+
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        if (file) {
-            setFormData({ ...formData, image: file });
-            setPreview(URL.createObjectURL(file));
+        if (!file) return;
+
+        // Contrôles immédiats : l'admin voit le problème avant de valider.
+        if (!ACCEPTED_TYPES.includes(file.type)) {
+            setImageError(`Format non supporté (${file.type || file.name.split('.').pop()}). Utilisez une photo JPG, PNG ou WebP.`);
+            e.target.value = '';
+            return;
         }
+        if (file.size > MAX_MO * 1024 * 1024) {
+            setImageError(`Image trop lourde (${(file.size / 1024 / 1024).toFixed(1)} Mo — maximum ${MAX_MO} Mo).`);
+            e.target.value = '';
+            return;
+        }
+
+        setImageError('');
+        if (preview && preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+        setFormData({ ...formData, image: file });
+        setPreview(URL.createObjectURL(file));
+        setFileInfo({ name: file.name, sizeMo: (file.size / 1024 / 1024).toFixed(1) });
     };
 
     const handleSubmit = async (e) => {
@@ -109,32 +131,58 @@ export default function ProductForm() {
                     </h1>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Image Upload */}
+                        {/* Image Upload — grand aperçu : l'admin vérifie l'image
+                            telle qu'elle apparaîtra AVANT de valider. */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Image du produit</label>
-                            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-giphar-green hover:bg-green-50/50 transition-all cursor-pointer relative group">
+
+                            {preview && (
+                                <div className="mb-3 animate-scale-in">
+                                    <div className="w-full h-64 bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center">
+                                        <img src={preview} alt="Aperçu du produit avant validation" className="max-w-full max-h-full object-contain" />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 mt-2 text-sm">
+                                        <span className="inline-flex items-center gap-1.5 text-green-700 font-medium">
+                                            <CheckCircle2 size={16} />
+                                            Aperçu — vérifiez l'image avant d'enregistrer
+                                        </span>
+                                        {fileInfo && (
+                                            <span className="text-slate-400 text-xs truncate max-w-[45%]">
+                                                {fileInfo.name} · {fileInfo.sizeMo} Mo
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={`border-2 border-dashed rounded-2xl text-center hover:border-giphar-green hover:bg-green-50/50 transition-all cursor-pointer relative group ${preview ? 'border-slate-200 p-4' : 'border-slate-200 p-8'}`}>
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/jpeg,image/png,image/webp"
                                     onChange={handleImageChange}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    required={!isEdit}
+                                    required={!isEdit && !preview}
                                 />
-
                                 {preview ? (
-                                    <div className="relative w-32 h-32 mx-auto">
-                                        <img src={preview} alt="Aperçu" className="w-full h-full object-cover rounded-xl shadow-md" />
-                                        <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <p className="text-white text-xs font-bold">Changer</p>
-                                        </div>
+                                    <div className="flex items-center justify-center gap-2 text-slate-500 group-hover:text-giphar-green transition-colors text-sm font-medium">
+                                        <RefreshCw size={16} />
+                                        Changer l'image
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center text-slate-400 group-hover:text-giphar-green transition-colors">
                                         <Upload size={32} className="mb-2" />
                                         <span className="text-sm font-medium">Cliquez pour ajouter une image</span>
+                                        <span className="text-xs mt-1">JPG, PNG ou WebP — 15 Mo max</span>
                                     </div>
                                 )}
                             </div>
+
+                            {imageError && (
+                                <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-red-600 animate-fade-in">
+                                    <AlertCircle size={16} className="shrink-0" />
+                                    {imageError}
+                                </p>
+                            )}
                         </div>
 
                         <div>
